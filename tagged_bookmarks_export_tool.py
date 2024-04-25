@@ -211,10 +211,10 @@ class MainFrame(wx.Frame):
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
 
             if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return  # the user changed their mind
-
-            # Proceed loading the file chosen by the user
+                return  # user changed their mind but no change to interface in that case
             pathname = fileDialog.GetPath()
+            if len(pathname) == 0:
+                return
             self.multitag_added = False
             # use the pathname just retrieve to set filepath in function from database_utils
             file_path(filepath=pathname)
