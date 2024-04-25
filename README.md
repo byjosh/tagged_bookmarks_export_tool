@@ -19,7 +19,15 @@ Windows PowerShell you would have for instance a slightly different command in p
 One can make binaries - but if you have Python and Git installed it is easy enough to run from source - and for anyone capable of reading Python it would seem better to be able to check the code - than the user having to trust an unsigned binary or me going to the trouble of making signed binaries.
 
 ## Tests
-Not that many tests but I am using [doctest](https://docs.python.org/3/library/doctest.html) from Python standard library to put in a few examples and there is a places.sqlite file for demonstration/testing purposes. 
+Not that many tests but I am using [doctest](https://docs.python.org/3/library/doctest.html) from Python standard library to put in a few examples and there is a places.sqlite file for demonstration/testing purposes.
+
+## Wishlist
+Given unlimited time & expertise:
+ * Keyboard navigation (helps users with disabilities)
+ * Internationalisation (broadens use beyond non-English speakers) 
+would be top of list.
+
+For now just grateful that thanks to Python and wxPython & wxWidgets a cross platform GUI in a nice, native style seems not too much work.
 
 ## Licensing
 This relies on [wxPython](https://wxpython.org/) and GPLv2 is very compatible with [the wxPython license](https://wxpython.org/pages/license/) (which seems to be GPLv2 with an exception to allow binaries to be distributed on any terms. So licensing my source here under GPLv2 seemed the easy choice.
