@@ -1,8 +1,12 @@
 # tagged_bookmarks_export_tool - introduction
 Exports HTML file of bookmarks only tagged with a specific tag or pair of tags - relies on the places.sqlite file from a Firefox browser profile (and those bookmarks actually being tagged in the browser - a feature of the Firefox browser compared to some other well-known web browsers). Why use this? One might have built a library of tagged bookmarks & want to share only the bookmarks tagged with a particular tag - regardless of folder - whereas with most browsers the export format is an HTML file of all bookmarks - which one would then have to manually edit to leave just those bookmarks in the relevant folder.
 
+![Screenshot of export tool showing main window with checkboxes for each tag and dual tag combination and two open windows of resulting HTML bookmarks](https://github.com/byjosh/tagged_bookmarks_export_tool/blob/main/Screenshot_tagged_bookmarks_export_tool.png?raw=true)
+
 ## Installation
-Requires Python3 and wxPython. The following commands will clone the repository, create a virtual environment, and run source version
+Requires Python3 and wxPython. The following commands will clone the repository, create a virtual environment, and run source version (should work on MacOS and GNU/Linux environments - in 
+Windows PowerShell you would have for instance a slightly different command in place of `source bin/activate`  of `.\Scripts\Activate.ps1` and `pip install -r requirements` would likely be `python.exe -m pip install -r requirements` (should check for commands for installing Python packages using pip and virtual environments on operating system you are using).
+
 ```
   git clone https://github.com/byjosh/tagged_bookmarks_export_tool.git
   python3 -m venv tagged_bookmarks_export_tool
@@ -13,6 +17,9 @@ Requires Python3 and wxPython. The following commands will clone the repository,
 ```
 
 One can make binaries - but if you have Python and Git installed it is easy enough to run from source - and for anyone capable of reading Python it would seem better to be able to check the code - than the user having to trust an unsigned binary or me going to the trouble of making signed binaries.
+
+## Tests
+Not that many tests but I am using [doctest](https://docs.python.org/3/library/doctest.html) from Python standard library to put in a few examples and there is a places.sqlite file for demonstration/testing purposes. 
 
 ## Licensing
 This relies on [wxPython](https://wxpython.org/) and GPLv2 is very compatible with [the wxPython license](https://wxpython.org/pages/license/) (which seems to be GPLv2 with an exception to allow binaries to be distributed on any terms. So licensing my source here under GPLv2 seemed the easy choice.
