@@ -213,11 +213,11 @@ class MainFrame(wx.Frame):
             if fileDialog.ShowModal() == wx.ID_CANCEL:
                 return  # the user changed their mind
 
-        # Proceed loading the file chosen by the user
-        pathname = fileDialog.GetPath()
-        self.multitag_added = False
-        # use the pathname just retrieve to set filepath in function from database_utils
-        file_path(filepath=pathname)
+            # Proceed loading the file chosen by the user
+            pathname = fileDialog.GetPath()
+            self.multitag_added = False
+            # use the pathname just retrieve to set filepath in function from database_utils
+            file_path(filepath=pathname)
 
         # remove and add back the lower Panel B
         self.panels_sizers = self.panel_sizer_with_this_panel_removed(self.pnlB)
