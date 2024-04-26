@@ -7,7 +7,7 @@ import wx
 from wx.html import HtmlWindow
 import wx.lib.inspection
 from database_utils import *
-import html_utils
+from html_utils import *
 
 html_page_source = ""
 file_path()
@@ -18,7 +18,7 @@ class TabCheckbox(wx.CheckBox):
 
     def __init__(self, *args, **kw):
         super(TabCheckbox, self).__init__(*args, **kw)
-        #self.EnableVisibleFocus(True) # causes error on Fedora Linux with python3-wxpython4 package
+        # self.EnableVisibleFocus(True) # causes error on Fedora Linux with python3-wxpython4 package
 
     def AcceptsFocusFromKeyboard(self):
         return True
@@ -88,11 +88,26 @@ class MainFrame(wx.Frame):
         self.multitag_check = multi_tag_checkbox
 
         # add the messages and checkbox to sizers
-        self.pnlA.sizer.Add(header_area_message, wx.SizerFlags().Border(wx.TOP | wx.LEFT, self.margin * 2))
-        self.pnlA.sizer.Add(self.multitag_check, wx.SizerFlags().Border(wx.TOP | wx.BOTTOM | wx.LEFT, self.margin))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(header_area_message, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(self.multitag_check, wx.SizerFlags().Border(wx.LEFT, self.margin))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label="Export format - choose how bookmarks will appear: \npage of HTML links with/without plaintext URLs or save direct to CSV"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        export_format_box = wx.Choice(self.pnlA, id=101, choices=[k for k in export_format_choices],
+                                      name="Export Format")
+        self.pnlA.sizer.Add(export_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlB.sizer.Add(tags_area_message,
                             wx.SizerFlags().Align(wx.TOP | wx.LEFT).Border(wx.TOP | wx.LEFT, self.margin * 2))
         self.pnlA.SetFocus()
+
+        # record initial format choice and resent as needed via EVT_CHOICE
+        format_window = wx.FindWindowById(101, self.pnlA)
+        format_choice_index = format_window.GetSelection()
+        self.format_choice = format_window.GetString(format_choice_index)
 
         # try only showing after open file
         self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer), (self.pnlB, self.pnlB.sizer)])
@@ -105,6 +120,7 @@ class MainFrame(wx.Frame):
         self.CreateStatusBar()
         self.SetStatusText("Load a places.sqlite bookmarks file to get started")
         self.Bind(wx.EVT_CHECKBOX, self.OnEVTCheckBox)
+        self.Bind(wx.EVT_CHOICE, self.OnEVTChoice)
         self.SetFocus()
 
     def set_sizers(self):
@@ -120,7 +136,8 @@ class MainFrame(wx.Frame):
         """Adds the multitag checkboxes to chosen size & panel"""
 
         if self.multitag_added == False:
-            multi_tag_list_header = wx.StaticText(self.pnlB, label="Entries for items tagged with both tag A && tag B - check box to show bookmarked links")
+            multi_tag_list_header = wx.StaticText(self.pnlB,
+                                                  label="Entries for items tagged with both tag A && tag B - check box to show bookmarked links")
             sizer.Add(multi_tag_list_header, wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
             tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
             self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
@@ -129,7 +146,8 @@ class MainFrame(wx.Frame):
                     sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
             else:
                 no_dual_tags_message = "Current sqlite file (this set of bookmarks)\ndoesn't have any bookmarks tagged with\nmore than 1 tag. Try another file?"
-                sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
+                sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),
+                          wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
 
             sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
             # print("multitag called")
@@ -143,38 +161,76 @@ class MainFrame(wx.Frame):
             # self.pnlA.Layout() # this with pnl.Layout after setsize leaves Panel B as main thing - with Panel A layout alone items are added to panel B but misplaced but Panel A present
             self.SetStatusText("Entries added for bookmarks tagged with at least two tags - scroll down to see")
 
-    def OnEVTCheckBox(self, event):
+    def open_or_export(self, format_choice):
+        """Export file or opening window in response to event"""
+
         global html_page_source
         global pathname
         x_pos, y_pos = self.GetPosition()
+        # pure CSV for export is final format
+        csv_choice = [k for k in export_format_choices][-1]
+
+        def csv_file_dialog(urls_titles):
+            # CSV save file dialog - uses csv_only function from html_utils.
+            with wx.FileDialog(self, "Save CSV file", wildcard="CSV files (*.csv)|*.csv",
+                               defaultFile=title.replace("&", "_and_"),
+                               style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
+
+                if fileDialog.ShowModal() == wx.ID_CANCEL:
+                    return  # decided not to save file
+
+                # save the csv
+                csvfile = fileDialog.GetPath()
+                try:
+                    csv_only(urls_titles, csvfile)
+                except IOError:
+                    wx.LogError("Cannot save current data in file '%s'." % csvfile)
+
+        urls_titles = None
+        for set_tuple in self.tags:
+            tagID = set_tuple[0]
+            title = set_tuple[1]
+        # searching for && is checking for single tags
+        is_dual_tag = [x for x in self.tags][0][1].find("&&") != -1
+        if is_dual_tag is False:
+            urls_titles = urls_from_tagID(tagID)
+        if is_dual_tag is True:
+            urls_titles = urls_from_combinedtagname(title, self.multitag_links_dict)
+            title = title.replace("&&", "&")
+            # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
+        if format_choice != csv_choice:
+            html_page_source = full_html(urls_titles, export_format_choices[format_choice], title)
+            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
+                html_page_source).Show()
+        else:
+            csv_file_dialog(urls_titles)
+
+    def OnEVTChoice(self, event):
+        format_window = wx.FindWindowById(101, self.pnlA)
+        format_choice_index = format_window.GetSelection()
+        self.format_choice = format_window.GetString(format_choice_index)
+        if len(self.tags) == 1:
+            # only one checkbox checked so changing format likely to indicate a different format wanted
+            # so open or export
+            self.open_or_export(self.format_choice)
+
+    def OnEVTCheckBox(self, event):
 
         if event.GetEventObject().Name != "multitag_categories":
             id_tagname_tuple = (event.GetEventObject().Id, event.GetEventObject().Label)
-            if event.GetEventObject().Value == True:
+            if event.GetEventObject().Value is True:
                 self.tags.add(id_tagname_tuple)
                 if len(self.tags) > 1:
                     checked_box_labels = ", ".join([x[1].replace("&&", "&") for x in self.tags])
                     wx.MessageBox(f'Uncheck whichever is unnecessary of\n {checked_box_labels} ',
                                   "More than 1 checkbox selected!")
-            elif event.GetEventObject().Value == False:
+            elif event.GetEventObject().Value is False:
                 self.tags.remove(id_tagname_tuple)
 
-            if len(self.tags) == 1 and [x for x in self.tags][0][1].find("&&") == -1:
-                for set_tuple in self.tags:
-                    tagID = set_tuple[0]
-                    title = set_tuple[1]
-                html_page_source = html_utils.full_html(urls_from_tagID(tagID), title)
-                myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
-                    html_page_source).Show()
-            elif len(self.tags) == 1 and [x for x in self.tags][0][1].find("&&") != -1:
-                for set_tuple in self.tags:
-                    tagID = set_tuple[0]  # this is not needed
-                    title = set_tuple[1]  # but this is to retrieve the right links
+            if len(self.tags) == 1:
+                self.open_or_export(self.format_choice)
 
-                html_page_source = html_utils.full_html(urls_from_combinedtagname(title, self.multitag_links_dict),
-                                                        title.replace("&&", "&"))
-                myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
-                    html_page_source).Show()
+
         elif event.GetEventObject().Name == "multitag_categories" and (
                 file_path() is not None) and event.GetEventObject().GetValue():
             if is_bookmarks_file():
@@ -259,7 +315,6 @@ class MainFrame(wx.Frame):
         # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
         self.SetSize(wx.Size(600, 601))
 
-
     def OnAbout(self, event):
         """Display an About Dialog"""
         about_text = "By github.com/byjosh. \n\n"
@@ -314,10 +369,20 @@ class myHtmlFrame(wx.Frame):
         super(myHtmlFrame, self).__init__(*args, **kw)
         self.html_win = HtmlWindow(self, size=wx.Size(800, 600))
         self.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnClick)
+        self.html_win.Bind(wx.EVT_TEXT_COPY, self.OnTextCopy)
 
     def SetPage(self, source):
         self.html_win.SetPage(source)
         return self
+
+    def OnTextCopy(self, event):
+        text = self.html_win.SelectionToText()
+        # from random import randint # random int to log event fired
+        # print("Text copied ",randint(1,100))
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.Clear()
+            wx.TheClipboard.SetData(wx.TextDataObject(text))
+            wx.TheClipboard.Close()
 
     def OnClick(self, event):
         """Handles when HTML link is clicked - opens in browser or saves HTML file for href == # """
@@ -326,6 +391,7 @@ class myHtmlFrame(wx.Frame):
         if event.GetLinkInfo().GetHref() == "#":
             # This is save file dialog
             with wx.FileDialog(self, "Save HTML file", wildcard="HTML files (*.html)|*.html",
+                               defaultFile=self.Label.replace("&", "_and_"),
                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
                 if fileDialog.ShowModal() == wx.ID_CANCEL:
@@ -345,5 +411,5 @@ if __name__ == '__main__':
     app = wx.App()
     frm = MainFrame(None, size=wx.Size(600, 600), title='Tagged bookmarks export tool')
     frm.Show()
-    # wx.lib.inspection.InspectionTool().Show() # uncomment for debugging via inspection tool
+    # wx.lib.inspection.InspectionTool().Show()  # uncomment for debugging via inspection tool
     app.MainLoop()

@@ -1,4 +1,3 @@
-
 # Copyright: josh - web@byjosh.co.uk github.com/byjosh
 # Licensed under GPLv2 - see LICENSE.txt in repository 
 # or https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
@@ -61,17 +60,20 @@ def places_by_tag(tagID):
 
 qs = {"tags": """SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title;""",
       "by_tag": places_by_tag,
-      "moz_places": """SELECT id,url,title from moz_places;""", "table_names":"SELECT name from sqlite_schema WHERE type='table';"}
+      "moz_places": """SELECT id,url,title from moz_places;""",
+      "table_names": "SELECT name from sqlite_schema WHERE type='table';"}
+
 
 def is_bookmarks_file() -> bool:
     """Checks if two key tables are present moz_places and moz_bookmarks returns True if so else False
     Used for file processing logic in main app"""
     try:
-        result = get_results(db_cursor(db_connect()),"SELECT name from sqlite_schema WHERE type='table';")
+        result = get_results(db_cursor(db_connect()), "SELECT name from sqlite_schema WHERE type='table';")
         return ('moz_places',) in result and ('moz_bookmarks',) in result
     except (sqlite3.DatabaseError, NameError) as error:
-        #print(error)
+        # print(error)
         return False
+
 
 def print_results(results):
     """ takes results as list of tuples and prints one per line - used for debugging purposes when importing module to query db"""
@@ -187,7 +189,7 @@ def title_urls_from_IDs(ids):
             for each_result in bookmarks_fk_result:
                 if (each_result[-2] is not None) and len(each_result[-2]) > len(title):
                     title = each_result[-2]
-            constructed_tuple = (results[0][0], results[0][1], title)
+            constructed_tuple = (results[0][1], title)
             output_list.append(constructed_tuple)
             # print("success - constructed tuple ", constructed_tuple )
             # test_result = bookmarks_fk_result[0][-2] is None
@@ -219,4 +221,5 @@ def urls_from_combinedtagname(combinedtagname, dual_tag_non_zero_dict):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
