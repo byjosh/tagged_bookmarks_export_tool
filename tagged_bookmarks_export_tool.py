@@ -79,8 +79,8 @@ class MainFrame(wx.Frame):
         # self.pnlB.SetBackgroundColour(wx.GREEN) # to see how layout options affect panel
 
         # add panels to sizers
-        self.sizer.Add(self.pnlA, 1, wx.EXPAND)
-        self.sizer.Add(self.pnlB, 1, wx.EXPAND)
+        self.sizer.Add(self.pnlA, wx.SizerFlags().Top())
+        self.sizer.Add(self.pnlB, wx.SizerFlags().Top())
 
         multi_tag_checkbox = TabCheckbox(self.pnlA,
                                          label="Append categories for items tagged with 2 tags e.g. both tag A && tag B\n (tick this before or after opening your sqlite file then look below list of single tag entries\n for entries of form 'tag A && tag B')",
@@ -100,8 +100,9 @@ class MainFrame(wx.Frame):
         export_format_box = wx.Choice(self.pnlA, id=101, choices=[k for k in export_format_choices],
                                       name="Export Format")
         self.pnlA.sizer.Add(export_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlB.sizer.Add(tags_area_message,
-                            wx.SizerFlags().Align(wx.TOP | wx.LEFT).Border(wx.TOP | wx.LEFT, self.margin * 2))
+                            wx.SizerFlags().Border( wx.LEFT, self.margin * 2))
         self.pnlA.SetFocus()
 
         # record initial format choice and resent as needed via EVT_CHOICE
@@ -137,13 +138,13 @@ class MainFrame(wx.Frame):
 
         if self.multitag_added == False:
             multi_tag_list_header = wx.StaticText(self.pnlB,
-                                                  label="Entries for items tagged with both tag A && tag B - check box to show bookmarked links")
-            sizer.Add(multi_tag_list_header, wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
+                                                  label="Entries for items tagged with both tag A && tag B\ncheck box to show bookmarked links")
+            sizer.Add(multi_tag_list_header, wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, self.margin * 2))
             tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
             self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
             if len(self.multitag_links_dict) > 0:
                 for textlabel in self.multitag_links_dict:
-                    sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
+                    sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin * 2)))
             else:
                 no_dual_tags_message = "Current sqlite file (this set of bookmarks)\ndoesn't have any bookmarks tagged with\nmore than 1 tag. Try another file?"
                 sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),
@@ -199,9 +200,9 @@ class MainFrame(wx.Frame):
             title = title.replace("&&", "&")
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
         if format_choice != csv_choice:
-            html_page_source = full_html(urls_titles, export_format_choices[format_choice], title)
+            html_page_source = full_html(urls_titles, title, export_format_choices[format_choice])
             myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
-                html_page_source).Show()
+                html_page_source,urls_titles,export_format_choices[format_choice]).Show()
         else:
             csv_file_dialog(urls_titles)
 
@@ -292,13 +293,13 @@ class MainFrame(wx.Frame):
         if is_bookmarks_file():
             # append tags to lower Panel B
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
-                                              label="Entries with items tagged with tag below - check box to show bookmarked links"),
-                                wx.SizerFlags().Border(wx.TOP | wx.LEFT | wx.BOTTOM, self.margin))
+                                              label="Entries with items tagged with tag below\ncheck box to show bookmarked links"),
+                                wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, self.margin * 2))
 
             tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
             for tag in tags:
                 self.pnlB.sizer.Add(TabCheckbox(self.pnlB, id=tags[tag], label=tag),
-                                    wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
+                                    wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, int(self.margin * 2)))
 
             self.pnlB.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 20))
             if self.multitag_check.GetValue():
@@ -307,8 +308,8 @@ class MainFrame(wx.Frame):
         else:
             self.SetStatusText("Not an appropriate bookmarks file - try another file?")
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
-                                              label="File lacks necessary database tables (moz_places and moz_bookmarks)\nIs it a places.sqlite bookmarks file from Firefox browser?\nTry another sqlite file?"),
-                                wx.SizerFlags().Border(wx.TOP | wx.LEFT | wx.BOTTOM, self.margin))
+                                              label="Last opened file lacks necessary database tables (moz_places and moz_bookmarks)\nIs it a places.sqlite bookmarks file from Firefox browser?\nTry another sqlite file?"),
+                                wx.SizerFlags().Border( wx.LEFT , self.margin * 2))
 
         self.set_sizers()
         self.pnl.Layout()
@@ -371,7 +372,9 @@ class myHtmlFrame(wx.Frame):
         self.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnClick)
         self.html_win.Bind(wx.EVT_TEXT_COPY, self.OnTextCopy)
 
-    def SetPage(self, source):
+    def SetPage(self, source,urls_titles,processing_function):
+        self.links = make_list_source_from_urls_titles(urls_titles,processing_function)
+        self.source = source
         self.html_win.SetPage(source)
         return self
 
@@ -386,11 +389,18 @@ class myHtmlFrame(wx.Frame):
 
     def OnClick(self, event):
         """Handles when HTML link is clicked - opens in browser or saves HTML file for href == # """
-        if event.GetLinkInfo().GetHref() != "#":
+        special_hrefs = ["#","##"]
+        if event.GetLinkInfo().GetHref() not in special_hrefs:
             webbrowser.open(event.GetLinkInfo().GetHref())
+        if event.GetLinkInfo().GetHref() == "##":
+            # just links as HTML
+            if wx.TheClipboard.Open():
+                wx.TheClipboard.Clear()
+                wx.TheClipboard.SetData(wx.HTMLDataObject(self.links))
+                wx.TheClipboard.Close()
         if event.GetLinkInfo().GetHref() == "#":
             # This is save file dialog
-            with wx.FileDialog(self, "Save HTML file", wildcard="HTML files (*.html)|*.html",
+            with wx.FileDialog(self, "Save as HTML file", wildcard="HTML files (*.html)|*.html",
                                defaultFile=self.Label.replace("&", "_and_"),
                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
@@ -401,7 +411,7 @@ class myHtmlFrame(wx.Frame):
                 pathname = fileDialog.GetPath()
                 try:
                     with open(pathname, 'w') as file:
-                        file.write(html_page_source)
+                        file.write(self.source.replace(instructional_text,""))
                 except IOError:
                     wx.LogError("Cannot save current data in file '%s'." % pathname)
 
