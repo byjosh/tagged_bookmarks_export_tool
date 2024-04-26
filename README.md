@@ -68,4 +68,4 @@ From the help file
         <h3>Why is this not relevant to other browsers?</h3>
         <p>Besides the issue of Firefox browser specific bookmarks database structure: others (such as Chrome browser or Safari browser) do not seem to use tags (as at spring 2024) and they export as 1 HTML file organised by folder - the same as current default for bookmarks HTML export from Firefox browser. If one only organises one\'s bookmarks by folder then editing the HTML file exported by your browser is enough to produce a file only of the desired bookmarks. Hence this tool only serves a purpose for tagged bookmarks from Firefox browser.</p>
         <h3>Trademark acknowledgements</h3>
-        <p>Firefox is a trademark of the Mozilla Foundation\n in the U.S. and other countries. Safari is a trademark of Apple Inc. Chrome is a trademark of Google LLC.</p>
+        <p>Firefox is a trademark of the Mozilla Foundation in the U.S. and other countries. Safari is a trademark of Apple Inc. Chrome is a trademark of Google LLC.</p>
