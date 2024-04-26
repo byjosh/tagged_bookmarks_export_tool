@@ -57,7 +57,7 @@ def full_html(urls_titles, processing_function, tag_text):
     '<html><head><title>My links</title></head><body><main><h1>TagTest links bookmarked</h1><a href="#">Save as HTML file</a><br /><p>number of links: 2</p><section id="links"><p><a href="https://www.example.com">Example.com Homepage</a><br/> (url is https://www.example.com)</p><p><a href="http://example.com">Example.com domain</a><br/> (url is http://example.com)</p></section></main></body></html>'
     
     """
-    page = f'<html><head><title>My links</title></head><body><main><h1>{tag_text.replace("&&", "&")} links bookmarked</h1><a href="#">Save as HTML file</a>&nbsp;and open in browser to copy text as HTML. Ctrl+C or CMD+C will copy text selected w<br />'
+    page = f'<html><head><title>My links</title></head><body><main><h1>{tag_text.replace("&&", "&")} links bookmarked</h1><a href="#">Save as HTML file</a> and open in browser to copy text as HTML. Ctrl+C (or Cmd+C) will copy text selected with mouse<br />'
     page += make_list_source_from_urls_titles(urls_titles=urls_titles, processing_function=processing_function)
     page += '</main></body></html>'
     return page
