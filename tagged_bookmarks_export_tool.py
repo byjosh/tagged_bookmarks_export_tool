@@ -57,7 +57,7 @@ class MainFrame(wx.Frame):
         header_text += "open a places.sqlite file\n"
         header_text += "from your Firefox browser profile\n"
         header_text += "(see Help menu or web search for how\n"
-        header_text += "to find profile folder & places.sqlite),\n"
+        header_text += "to find profile folder && places.sqlite),\n"
         header_text += "using File menu > Open or use Ctrl+O\n"
         header_text += " or CMD+O depending on your computer operating system."
         header_area_message = wx.StaticText(self.pnlA, label=header_text)
@@ -120,12 +120,16 @@ class MainFrame(wx.Frame):
         """Adds the multitag checkboxes to chosen size & panel"""
 
         if self.multitag_added == False:
-            multi_tag_list_header = wx.StaticText(self.pnlB, label="Entries for items tagged with both tag A && tag B")
+            multi_tag_list_header = wx.StaticText(self.pnlB, label="Entries for items tagged with both tag A && tag B - check box to show bookmarked links")
             sizer.Add(multi_tag_list_header, wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
             tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
             self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
-            for textlabel in self.multitag_links_dict:
-                sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
+            if len(self.multitag_links_dict) > 0:
+                for textlabel in self.multitag_links_dict:
+                    sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
+            else:
+                no_dual_tags_message = "Current sqlite file (this set of bookmarks)\ndoesn't have any bookmarks tagged with\nmore than 1 tag. Try another file?"
+                sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
 
             sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
             # print("multitag called")
@@ -173,7 +177,10 @@ class MainFrame(wx.Frame):
                     html_page_source).Show()
         elif event.GetEventObject().Name == "multitag_categories" and (
                 file_path() is not None) and event.GetEventObject().GetValue():
-            self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
+            if is_bookmarks_file():
+                self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
+            else:
+                self.SetStatusText("Need a bookmarks file to append categories for items with 2 tags! ")
 
     def make_menu(self):
         """
@@ -226,24 +233,32 @@ class MainFrame(wx.Frame):
         self.pnlB.sizer = wx.FlexGridSizer(cols=1)
         self.panels_sizers.append((self.pnlB, self.pnlB.sizer))
         self.sizer.Add(self.pnlB, wx.SizerFlags().Top().Expand())
-        # append tags to lower Panel B
-        self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
-                                          label="Entries with items tagged with tag below - check box to show bookmarked links"),
-                            wx.SizerFlags().Border(wx.TOP | wx.LEFT | wx.BOTTOM, self.margin))
+        if is_bookmarks_file():
+            # append tags to lower Panel B
+            self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
+                                              label="Entries with items tagged with tag below - check box to show bookmarked links"),
+                                wx.SizerFlags().Border(wx.TOP | wx.LEFT | wx.BOTTOM, self.margin))
 
-        tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
-        for tag in tags:
-            self.pnlB.sizer.Add(TabCheckbox(self.pnlB, id=tags[tag], label=tag),
-                                wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
+            tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
+            for tag in tags:
+                self.pnlB.sizer.Add(TabCheckbox(self.pnlB, id=tags[tag], label=tag),
+                                    wx.SizerFlags().Border(wx.LEFT, int(self.margin)))
 
-        self.pnlB.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 20))
-        if self.multitag_check.GetValue():
-            self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
+            self.pnlB.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 20))
+            if self.multitag_check.GetValue():
+                self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
+            self.SetStatusText("File loaded")
+        else:
+            self.SetStatusText("Not an appropriate bookmarks file - try another file?")
+            self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
+                                              label="File lacks necessary database tables (moz_places and moz_bookmarks)\nIs it a places.sqlite bookmarks file from Firefox browser?\nTry another sqlite file?"),
+                                wx.SizerFlags().Border(wx.TOP | wx.LEFT | wx.BOTTOM, self.margin))
+
         self.set_sizers()
         self.pnl.Layout()
         # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
         self.SetSize(wx.Size(600, 601))
-        self.SetStatusText("File loaded")
+
 
     def OnAbout(self, event):
         """Display an About Dialog"""
