@@ -2,7 +2,7 @@
 # Copyright: josh - web@byjosh.co.uk github.com/byjosh
 # Licensed under GPLv2 - see LICENSE.txt in repository 
 # or https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-from sqlite3 import connect
+import sqlite3
 
 # START basic database functions
 def file_path(path=[], **kw):
@@ -20,7 +20,7 @@ def file_path(path=[], **kw):
 def db_connect():
     global pathname
 
-    conn = connect(file_path())
+    conn = sqlite3.connect(file_path())
     return conn
 
 
@@ -61,8 +61,17 @@ def places_by_tag(tagID):
 
 qs = {"tags": """SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title;""",
       "by_tag": places_by_tag,
-      "moz_places": """SELECT id,url,title from moz_places;"""}
+      "moz_places": """SELECT id,url,title from moz_places;""", "table_names":"SELECT name from sqlite_schema WHERE type='table';"}
 
+def is_bookmarks_file() -> bool:
+    """Checks if two key tables are present moz_places and moz_bookmarks returns True if so else False
+    Used for file processing logic in main app"""
+    try:
+        result = get_results(db_cursor(db_connect()),"SELECT name from sqlite_schema WHERE type='table';")
+        return ('moz_places',) in result and ('moz_bookmarks',) in result
+    except (sqlite3.DatabaseError, NameError) as error:
+        #print(error)
+        return False
 
 def print_results(results):
     """ takes results as list of tuples and prints one per line - used for debugging purposes when importing module to query db"""
