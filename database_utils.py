@@ -1,31 +1,8 @@
-from sqlite3 import connect
-
 
 # Copyright: josh - web@byjosh.co.uk github.com/byjosh
 # Licensed under GPLv2 - see LICENSE.txt in repository 
 # or https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-
-
-# following retrieves tech bookmarks tagID is 688
-# title_urls_from_IDs(bookmarks_fk_set(get_results(db_cursor(db_connect()),qs["by_tag"](688))))
-# tags have parent of 4 and type of 2
-# retrieve id and title with get_results qs["tags"] as query
-
-# gets tags dict
-# tag_dict(get_results(db_cursor(db_connect()),qs["tags"]))
-
-# First run iteration of program (getting used to wxPython)
-# This tag_dict is used to build a checkbox list after opening file dialogue with the tag ID as the checkbox ID and the tag text as the label
-
-# The checkbox checked event adds the tuple of tag ID and text to a object property that is a list of tuples and if only 1 checkbox is checked that opens a window with the requisite links
-
-# the links are produced by the ID used to search for type 1 entries in moz_bookmarks where parent is the tag ID to get foreign key IDs
-# title_urls_from_IDs then uses the foreign keys to get the URL and title from moz_places and checks if moz_bookmarks has a longer title for the URL to produce URLs and titles as list of tuples - this is used to make HTML of page
-
-# Second run - need to accommodate intersection of tags - at least two. It seems better to pre-compute if which two tag combos actually produce a list of links. Storing and passing the IDs and the precomputation of the combinations that do not produce zero results are the two major changes. The title/URL tuples could be put into a set and then extracted and sorted to produce a unified list.
-# Extending the Checkbox class to have a property that is a list of tags & names and appending combination tags to the a tags dict seems the straightforward was to do it. Precomputing the combinations however will likely give links so do that first to see if the results should be saved somewhere.
-
-# Using intermediate in-memory dict instead of calls to database speeded up dual_tag_non_zero_dict function a hundredfold 23.9 down to .245 or .219 seconds
+from sqlite3 import connect
 
 # START basic database functions
 def file_path(path=[], **kw):
