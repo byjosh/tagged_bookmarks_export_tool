@@ -14,11 +14,11 @@ file_path()
 
 
 class TabCheckbox(wx.CheckBox):
-    """Subclass the checkbox - re: keyboard input - TODO: cross platform test as it seems a Mac specific issue"""
+    """Subclass the checkbox - re: keyboard input - TODO: Look into MacOS specific default behaviour re: keyboard navigation"""
 
     def __init__(self, *args, **kw):
         super(TabCheckbox, self).__init__(*args, **kw)
-        self.EnableVisibleFocus(True)
+        #self.EnableVisibleFocus(True) # causes error on Fedora Linux with python3-wxpython4 package
 
     def AcceptsFocusFromKeyboard(self):
         return True
