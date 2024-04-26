@@ -4,8 +4,17 @@ Exports HTML file of bookmarks only tagged with a specific tag or pair of tags -
 ![Screenshot of export tool showing main window with checkboxes for each tag and dual tag combination and two open windows of resulting HTML bookmarks](https://github.com/byjosh/tagged_bookmarks_export_tool/blob/main/Screenshot_tagged_bookmarks_export_tool.png?raw=true)
 
 ## Installation
-Requires Python3 and wxPython. The following commands will clone the repository, create a virtual environment, and run source version (should work on MacOS and GNU/Linux environments - in 
-Windows PowerShell you would have for instance a slightly different command in place of `source bin/activate`  of `.\Scripts\Activate.ps1` and `pip install -r requirements` would likely be `python.exe -m pip install -r requirements` (should check for commands for installing Python packages using pip and virtual environments on operating system you are using).
+Requires Python3 and wxPython. The following commands will 
+1. clone the repository,
+2.  create a Python virtual environment, 
+3. change into the directory
+4. activate the virtual environment
+5. use pip to install requirements
+6. run source version 
+
+ and should work on MacOS.
+In GNU/Linux environments rather than using a virtual environment install a python 3 wxPython 4 package may be faster.
+So you would use lines 1 (clone repository), 3 (change into directory) and 6 (run the source version of program) after installing appropriate package (e.g. [python3-wxpython4 (tested & works with this script)](https://packages.fedoraproject.org/pkgs/python-wxpython4/python3-wxpython4/) or [wxpython4 (not tested but from name appears seems likely package)](https://packages.debian.org/stable/source/wxpython4.0) or similar depending on your choice of Linux distribution)
 
 ```
   git clone https://github.com/byjosh/tagged_bookmarks_export_tool.git
@@ -16,6 +25,16 @@ Windows PowerShell you would have for instance a slightly different command in p
   python3 tagged_bookmarks_export_tool.py
 ```
 
+In a Windows PowerShell environment the following should work (`python3.12.exe` may have different version number or simply be `python.exe` in your setup).
+```
+git clone https://github.com/byjosh/tagged_bookmarks_export_tool.git
+python3.12.exe -m venv .\tagged_bookmarks_export_tool
+cd .\tagged_bookmarks_export_tool
+.\Scripts\Activate.ps1
+python3.12.exe -m pip install -r requirements.txt
+python3.12.exe .\tagged_bookmarks_export_tool.py
+```
+
 One can make binaries - but if you have Python and Git installed it is easy enough to run from source - and for anyone capable of reading Python it would seem better to be able to check the code - than the user having to trust an unsigned binary or me going to the trouble of making signed binaries.
 
 ## Tests
@@ -23,7 +42,7 @@ Not that many tests but I am using [doctest](https://docs.python.org/3/library/d
 
 ## Wishlist
 Given unlimited time & expertise:
- * Keyboard navigation (helps users with disabilities)
+ * Keyboard navigation (in general helps users with disabilities) - already good if running this on Windows or Linux
  * Internationalisation (broadens use beyond non-English speakers) 
 would be top of list.
 
