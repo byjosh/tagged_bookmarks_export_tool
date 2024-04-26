@@ -42,5 +42,4 @@ def full_html(urls_titles, tag_text):
 
 if __name__ == "__main__":
     import doctest
-
     doctest.testmod()
