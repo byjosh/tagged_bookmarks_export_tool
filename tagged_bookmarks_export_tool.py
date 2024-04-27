@@ -113,7 +113,7 @@ class MainFrame(wx.Frame):
         # try only showing after open file
         self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer), (self.pnlB, self.pnlB.sizer)])
         self.set_sizers()
-
+        self.SetSize(wx.Size(600, 600))
         # create a menu bar
         self.make_menu()
 
@@ -155,7 +155,7 @@ class MainFrame(wx.Frame):
 
             self.set_sizers()
             # print("name ",self.Name)
-            self.SetSize(wx.Size(600, 600))
+            self.SetSize(wx.Size(600, 601))
             panel.Layout()
             self.multitag_added = True
             # Just laying out the changed panel after SetSizer and SetSize calls works
@@ -284,6 +284,7 @@ class MainFrame(wx.Frame):
             file_path(filepath=pathname)
 
         # remove and add back the lower Panel B
+        self.tags = set()
         self.panels_sizers = self.panel_sizer_with_this_panel_removed(self.pnlB)
         self.pnlB.Destroy()
         self.pnlB = wx.Panel(self.pnl)
@@ -305,6 +306,11 @@ class MainFrame(wx.Frame):
             if self.multitag_check.GetValue():
                 self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
             self.SetStatusText("File loaded")
+            self.set_sizers()
+
+            self.pnl.Layout()
+            # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
+            self.SetSize(wx.Size(600, 599))
         else:
             self.SetStatusText("Not an appropriate bookmarks file - try another file?")
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
@@ -312,9 +318,12 @@ class MainFrame(wx.Frame):
                                 wx.SizerFlags().Border( wx.LEFT , self.margin * 2))
 
         self.set_sizers()
+
         self.pnl.Layout()
         # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
-        self.SetSize(wx.Size(600, 601))
+        self.SetSize(wx.Size(600, 600))
+
+
 
     def OnAbout(self, event):
         """Display an About Dialog"""
