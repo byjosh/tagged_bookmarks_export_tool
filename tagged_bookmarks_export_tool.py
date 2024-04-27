@@ -135,32 +135,33 @@ class MainFrame(wx.Frame):
 
     def add_multitag_checkboxes(self, sizer, panel):
         """Adds the multitag checkboxes to chosen size & panel"""
-
-        if self.multitag_added == False:
+        width, height = self.GetSize()
+        if self.multitag_added is True:
+            return
+        tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
+        self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
+        if self.multitag_added is False and len(self.multitag_links_dict) > 0:
             multi_tag_list_header = wx.StaticText(self.pnlB,
                                                   label="Entries for items tagged with both tag A && tag B\ncheck box to show bookmarked links")
             sizer.Add(multi_tag_list_header, wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, self.margin * 2))
-            tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
-            self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
-            if len(self.multitag_links_dict) > 0:
-                for textlabel in self.multitag_links_dict:
-                    sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin * 2)))
-            else:
-                no_dual_tags_message = "Current sqlite file (this set of bookmarks)\ndoesn't have any bookmarks tagged with\nmore than 1 tag. Try another file?"
-                sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),
-                          wx.SizerFlags().Border(wx.TOP | wx.LEFT, 15))
-
-            sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
-            # print("multitag called")
-
-            self.set_sizers()
-            # print("name ",self.Name)
-            self.SetSize(wx.Size(600, 601))
-            panel.Layout()
+            for textlabel in self.multitag_links_dict:
+                sizer.Add(wx.CheckBox(panel, label=textlabel), wx.SizerFlags().Border(wx.LEFT, int(self.margin * 2)))
             self.multitag_added = True
             # Just laying out the changed panel after SetSizer and SetSize calls works
             # self.pnlA.Layout() # this with pnl.Layout after setsize leaves Panel B as main thing - with Panel A layout alone items are added to panel B but misplaced but Panel A present
             self.SetStatusText("Entries added for bookmarks tagged with at least two tags - scroll down to see")
+        else:
+            no_dual_tags_message = "Current sqlite file (this set of bookmarks)\ndoesn't have any bookmarks tagged with\nmore than 1 tag. Try another file?"
+            sizer.Add(wx.StaticText(self.pnlB, label=no_dual_tags_message),
+                      wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+            self.SetStatusText("In this file no bookmarks tagged with more than 1 tag. Try another file?")
+
+        sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
+        self.set_sizers()
+        # print("name ",self.Name)
+        self.SetSize(wx.Size(width, height+1))
+        panel.Layout()
+
 
     def open_or_export(self, format_choice):
         """Export file or opening window in response to event"""
@@ -168,6 +169,7 @@ class MainFrame(wx.Frame):
         global html_page_source
         global pathname
         x_pos, y_pos = self.GetPosition()
+        width, height = self.GetSize()
         # pure CSV for export is final format
         csv_choice = [k for k in export_format_choices][-1]
 
@@ -201,7 +203,7 @@ class MainFrame(wx.Frame):
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
         if format_choice != csv_choice:
             html_page_source = full_html(urls_titles, title, export_format_choices[format_choice])
-            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
+            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
                 html_page_source,urls_titles,export_format_choices[format_choice]).Show()
         else:
             csv_file_dialog(urls_titles)
@@ -270,6 +272,7 @@ class MainFrame(wx.Frame):
 
     def OnOpen(self, event):
         """File Open dialogue"""
+        width, height = self.GetSize()
         # pick file
         with wx.FileDialog(self, "Open sqlite file", wildcard="sqlite files (*.sqlite)|*.sqlite",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
@@ -310,7 +313,7 @@ class MainFrame(wx.Frame):
 
             self.pnl.Layout()
             # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
-            self.SetSize(wx.Size(600, 599))
+            self.SetSize(wx.Size(width, height-1))
         else:
             self.SetStatusText("Not an appropriate bookmarks file - try another file?")
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
@@ -321,7 +324,7 @@ class MainFrame(wx.Frame):
 
         self.pnl.Layout()
         # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
-        self.SetSize(wx.Size(600, 600))
+        self.SetSize(wx.Size(width, height+1))
 
 
 
@@ -344,6 +347,7 @@ class MainFrame(wx.Frame):
     def OnHelp(self, event):
         """Show Help file (single page HTML)"""
         x_pos, y_pos = self.GetPosition()
+        width,height = self.GetSize()
         title = "Tagged bookmarks export tool - Help"
         html_text = f'<html><head><title>{title}</title><style></style></head><body>\
         <h1>Help</h1>\
@@ -366,7 +370,7 @@ class MainFrame(wx.Frame):
         </body></html>'
 
         helpframe = wx.Frame(self, size=wx.Size(600, 600), )
-        myHtmlFrame(helpframe, size=wx.Size(800, 600), pos=wx.Point(x_pos + 600, y_pos), title=title).SetPage(
+        myHtmlFrame(helpframe, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
             html_text).Show()
 
 
