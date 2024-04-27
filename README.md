@@ -1,5 +1,7 @@
 # tagged_bookmarks_export_tool - introduction
-Exports HTML file of bookmarks only tagged with a specific tag or pair of tags - relies on the places.sqlite file from a Firefox browser profile (and those bookmarks actually being tagged in the browser - a feature of the Firefox browser compared to some other well-known web browsers). Why use this? One might have built a library of tagged bookmarks & want to share only the bookmarks tagged with a particular tag - regardless of folder - whereas with most browsers the export format is an HTML file of all bookmarks - which one would then have to manually edit to leave just those bookmarks in the relevant folder.
+Exports HTML file of bookmarks only tagged with a specific tag or pair of tags - relies on the places.sqlite file from a Firefox browser profile (and those bookmarks actually being tagged in the browser - a feature of the Firefox browser compared to some other well-known web browsers). 
+
+Why use this? One might have built a library of tagged bookmarks & want to share only the bookmarks tagged with a particular tag. One can copy multiple URLs at once from Firefox bookmark manager - however this is URLs only with no descriptive text. Using the https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3048994 URL seen in screenshot as an example it is hard to discern from a glance at the URL what it is about so sharing it as [Lateral Reading: Reading Less and Learning More When Evaluating Digital Information by Sam Wineburg, Sarah McGrew :: SSRN](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3048994) could be more useful - especially if sharing a lot of quite similar looking URLs such as links to social media or https://www.ncbi.nlm.nih.gov/pmc article links.
 
 ![Screenshot of export tool showing main window with checkboxes for each tag and dual tag combination and two open windows of resulting HTML bookmarks](https://github.com/byjosh/tagged_bookmarks_export_tool/blob/main/Screenshot_tagged_bookmarks_export_tool.png?raw=true)
 
@@ -42,8 +44,9 @@ Not that many tests but I am using [doctest](https://docs.python.org/3/library/d
 
 ## Wishlist
 Given unlimited time & expertise:
- * Keyboard navigation (in general helps users with disabilities) - already good if running this on Windows or Linux
- * Internationalisation (broadens use beyond non-English speakers) 
+ * keyboard navigation (in general helps users with disabilities) - already good if running this on Windows or Linux
+ * internationalisation (broadens use beyond non-English speakers)
+ * better copy/paste functionality
 would be top of list.
 
 For now just grateful that thanks to Python and wxPython & wxWidgets a cross platform GUI in a nice, native style seems not too much work.
