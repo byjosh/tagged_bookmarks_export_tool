@@ -59,7 +59,7 @@ class MainFrame(wx.Frame):
         header_text += "(see Help menu or web search for how\n"
         header_text += "to find profile folder && places.sqlite),\n"
         header_text += "using File menu > Open or use Ctrl+O\n"
-        header_text += " or CMD+O depending on your computer operating system."
+        header_text += " or Cmd+O depending on your computer operating system."
         header_area_message = wx.StaticText(self.pnlA, label=header_text)
         font = header_area_message.GetFont()
         font.PointSize += 2
