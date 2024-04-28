@@ -3,23 +3,26 @@
 # or https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 import sqlite3
 
+
 # START basic database functions
-def file_path(path=[], **kw):
+def specify_file_path(path=[], **kw):
     """Use this to have a single location accessible from this module for the name of the current database file. TODO: check if there is a good singleton pattern to use"""
-    if "filepath" in kw:
+    import os.path
+    if "file_path" in kw and os.path.exists(kw["file_path"]) is True and os.path.isfile(kw["file_path"]) is True:
         # if already a filename in path remove it to add new one
         if len(path) == 1:
             path.pop()
-        path.append(kw["filepath"])
+        path.append(kw["file_path"])
         return path[0]
+    elif "file_path" in kw and (os.path.exists(kw["file_path"]) is False or os.path.isfile(kw["file_path"]) is False):
+        print("That was not a valid file you selected - about to return the previous file")
     if len(path) == 1:
         return path[0]
 
 
 def db_connect():
     global pathname
-
-    conn = sqlite3.connect(file_path())
+    conn = sqlite3.connect(specify_file_path())
     return conn
 
 
@@ -34,15 +37,13 @@ def get_results(curs, query):
     >>> print("Following four tests depend on data in places.sqlite used for test & mostly alert you to that file or qs dictionary having changed if these fail")
     Following four tests depend on data in places.sqlite used for test & mostly alert you to that file or qs dictionary having changed if these fail
 
-    >>> file_path(filepath='places.sqlite')
+    >>> specify_file_path(file_path='places.sqlite')
     'places.sqlite'
-    >>> get_results(db_cursor(db_connect()),qs["by_tag"](8))
-    [(9, 1, 8, None, 6), (11, 1, 8, None, 7), (13, 1, 8, None, 8), (19, 1, 8, None, 10)]
 
-    >>> get_results(db_cursor(db_connect()),qs["tags"])
-    [(15, 2, 4, 'book'), (8, 2, 4, 'factchecking'), (23, 2, 4, 'programming'), (26, 2, 4, 'python')]
 
-    >>> get_results(db_cursor(db_connect()),qs["moz_places"])
+
+
+
     [(6, 'https://hapgood.us/2019/06/19/sift-the-four-moves/', 'SIFT (The Four Moves) – Hapgood'), (7, 'https://cor.inquirygroup.org/curriculum/lessons/intro-to-lateral-reading/', 'Intro to Lateral Reading | Civic Online Reasoning'), (8, 'https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3048994', 'Lateral Reading: Reading Less and Learning More When Evaluating Digital Information by Sam Wineburg, Sarah McGrew :: SSRN'), (9, 'https://libro.fm/audiobooks/9781508279532-good-and-mad', 'Libro.fm | Good and Mad Audiobook'), (10, 'https://uk.bookshop.org/p/books/verified-how-to-think-straight-get-duped-less-and-make-better-decisions-about-what-to-believe-online-mike-caulfield/7439531?ean=9780226822068', 'Verified: How to Think Straight, Get Duped Less, and Make Better Decisions about What to Believe Online a book by Mike Caulfield and Sam Wineburg.'), (11, 'https://leanpub.com/b/python-craftsman', 'The Python Craftsman'), (12, 'https://wiki.mozilla.org/File:Places.sqlite.schema.pdf', 'File:Places.sqlite.schema.pdf - MozillaWiki'), (13, 'https://wxpython.org/', 'Welcome to wxPython! | wxPython')]
 
     """
@@ -53,22 +54,19 @@ def get_results(curs, query):
 # END basic database functions
 
 def places_by_tag(tagID):
-    """ takes a tagID and returns all places - the foreign key is important field """
-    return """SELECT id,type,parent,title,fk from moz_bookmarks WHERE parent == {} AND type == 1 ORDER BY title;""".format(
-        tagID)
+    """ takes a tagID and returns all links with that tag i.e. parent field - the foreign key is important field """
+    return db_connect().execute("""SELECT id,type,parent,title,fk from moz_bookmarks WHERE parent == ? AND type == 1 ORDER BY title;""", (tagID,)).fetchall()
 
+def get_tags(conn):
+    return conn.execute("""SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title""").fetchall()
 
-qs = {"tags": """SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title;""",
-      "by_tag": places_by_tag,
-      "moz_places": """SELECT id,url,title from moz_places;""",
-      "table_names": "SELECT name from sqlite_schema WHERE type='table';"}
 
 
 def is_bookmarks_file() -> bool:
     """Checks if two key tables are present moz_places and moz_bookmarks returns True if so else False
     Used for file processing logic in main app"""
     try:
-        result = get_results(db_cursor(db_connect()), "SELECT name from sqlite_schema WHERE type='table';")
+        result = get_database_table_names()
         return ('moz_places',) in result and ('moz_bookmarks',) in result
     except (sqlite3.DatabaseError, NameError) as error:
         # print(error)
@@ -82,7 +80,7 @@ def print_results(results):
 
 
 def tag_dict(results):
-    """Using list of results from qs['tags'] as in get_results(db_cursor(db_connect()),qs['tags']) return a dict of {name: ID} format 
+    """Using list of results from get_tags() return a dict of {name: ID} format
     
     >>> tag_dict([(1,'A'),(2,'B')])
     {'A': 1, 'B': 2}
@@ -130,7 +128,7 @@ def dual_tag_non_zero_dict(dual_tag_dict):
             if tag in intermediate_dict:
                 item[1].extend(intermediate_dict[tag])
                 continue
-            fk_list_result = bookmarks_fk_set(get_results(db_cursor(db_connect()), qs["by_tag"](tag)))
+            fk_list_result = bookmarks_fk_set(places_by_tag(tag))
             intermediate_dict[tag] = fk_list_result
             item[1].extend(fk_list_result)
 
@@ -158,6 +156,35 @@ def bookmarks_fk_set(results):
         elif result[fk_location] in id_list:
             print(result[fk_location], " in ", result)
     return id_list
+
+
+def get_database_table_names():
+    """returns table names from sqlite_schema table
+    Troubleshooting function - used for developing table queries when this file is imported
+    """
+    return get_results(db_cursor(db_connect()), "SELECT name from sqlite_schema WHERE type='table';")
+
+
+def get_table_schema(table_name):
+    """returns column info for given table name
+    Troubleshooting function - used for developing table queries when this file is imported
+    """
+    # allow tables names that are alphanumeric or with underscores or dashes
+    sanitised_name = "".join([a for a in table_name if a.isalnum() or a in [c for c in "_-"]])
+    try:
+        if db_connect().execute('SELECT 1 FROM sqlite_master WHERE type="table" and name= ?;',(sanitised_name,)).fetchall() is not None:
+            # OK table exists as is - so use table name
+            return get_results(db_cursor(db_connect()), f"PRAGMA table_info({sanitised_name});")
+    finally:
+        print("Finally happened - an error?")
+
+
+def get_description_via_url(url):
+    """given URL fetch description
+    Not currently in use
+    """
+    get_results(db_cursor(db_connect()),
+                f"SELECT description from moz_places where url ={url} ;")
 
 
 def title_urls_from_IDs(ids):
@@ -205,8 +232,8 @@ def title_urls_from_IDs(ids):
 
 
 def urls_from_tagID(id):
-    """given a single id for a tag from moz_bookmarks table return the urls and IDs (via retrieval of the foreign keys)"""
-    return title_urls_from_IDs(bookmarks_fk_set(get_results(db_cursor(db_connect()), qs["by_tag"](id))))
+    """given a single id for a tag from moz_bookmarks table return the urls and titles (via retrieval of the foreign keys)"""
+    return title_urls_from_IDs(bookmarks_fk_set( places_by_tag(id)))
 
 
 def urls_from_combinedtagname(combinedtagname, dual_tag_non_zero_dict):
