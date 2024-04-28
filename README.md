@@ -6,7 +6,7 @@ Why use this? One might have built a library of tagged bookmarks & want to share
 ![Screenshot of export tool showing main window with checkboxes for each tag and dual tag combination and two open windows of resulting HTML bookmarks](https://github.com/byjosh/tagged_bookmarks_export_tool/blob/main/Screenshot_tagged_bookmarks_export_tool.png?raw=true)
 
 ## Installation
-Requires Python3 and wxPython. The following commands will 
+Requires Python 3 installed and wxPython (on MacOS or Windows operating systems use pip to get wxPython - on Linux it is probably better to install wxPython via distribution specific binary). The following commands will 
 1. clone the repository,
 2.  create a Python virtual environment, 
 3. change into the directory
@@ -15,9 +15,6 @@ Requires Python3 and wxPython. The following commands will
 6. run source version 
 
  and should work on MacOS.
-In GNU/Linux environments rather than using a virtual environment install a python 3 wxPython 4 package may be faster.
-So you would use lines 1 (clone repository), 3 (change into directory) and 6 (run the source version of program) after installing appropriate package (e.g. [python3-wxpython4 (tested & works with this script)](https://packages.fedoraproject.org/pkgs/python-wxpython4/python3-wxpython4/) or [wxpython4 (not tested but from name appears seems likely package)](https://packages.debian.org/stable/source/wxpython4.0) or similar depending on your choice of Linux distribution)
-
 ```
   git clone https://github.com/byjosh/tagged_bookmarks_export_tool.git
   python3 -m venv tagged_bookmarks_export_tool
@@ -26,6 +23,8 @@ So you would use lines 1 (clone repository), 3 (change into directory) and 6 (ru
   pip install -r requirements.txt
   python3 tagged_bookmarks_export_tool.py
 ```
+In GNU/Linux environments rather than using a virtual environment installing a distro specific Python 3 wxPython 4 package may be faster as this will avoid build time.
+So of the above you would use lines: 1 (clone repository), 3 (change into directory) and 6 (run the source version of program) after installing appropriate package (e.g. [python3-wxpython4 on Fedora (tested & works with this script)](https://packages.fedoraproject.org/pkgs/python-wxpython4/python3-wxpython4/) or [wxpython4 on Debian (not tested but from name appears seems likely package)](https://packages.debian.org/stable/source/wxpython4.0) or similar depending on your choice of Linux distribution)
 
 In a Windows PowerShell environment the following should work (`python3.12.exe` may have different version number or simply be `python.exe` in your setup).
 ```
