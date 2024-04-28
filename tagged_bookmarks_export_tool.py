@@ -10,7 +10,7 @@ from database_utils import *
 from html_utils import *
 
 html_page_source = ""
-file_path()
+specify_file_path()
 
 
 class TabCheckbox(wx.CheckBox):
@@ -138,7 +138,7 @@ class MainFrame(wx.Frame):
         width, height = self.GetSize()
         if self.multitag_added is True:
             return
-        tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
+        tags = tag_dict(get_tags(db_connect()))
         self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
         if self.multitag_added is False and len(self.multitag_links_dict) > 0:
             multi_tag_list_header = wx.StaticText(self.pnlB,
@@ -235,7 +235,7 @@ class MainFrame(wx.Frame):
 
 
         elif event.GetEventObject().Name == "multitag_categories" and (
-                file_path() is not None) and event.GetEventObject().GetValue():
+                specify_file_path() is not None) and event.GetEventObject().GetValue():
             if is_bookmarks_file():
                 self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
             else:
@@ -284,7 +284,7 @@ class MainFrame(wx.Frame):
                 return
             self.multitag_added = False
             # use the pathname just retrieve to set filepath in function from database_utils
-            file_path(filepath=pathname)
+            specify_file_path(file_path=pathname)
 
         # remove and add back the lower Panel B
         self.tags = set()
@@ -300,7 +300,7 @@ class MainFrame(wx.Frame):
                                               label="Entries with items tagged with tag below\ncheck box to show bookmarked links"),
                                 wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, self.margin * 2))
 
-            tags = tag_dict(get_results(db_cursor(db_connect()), qs["tags"]))
+            tags = tag_dict(get_tags(db_connect()))
             for tag in tags:
                 self.pnlB.sizer.Add(TabCheckbox(self.pnlB, id=tags[tag], label=tag),
                                     wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, int(self.margin * 2)))
@@ -385,10 +385,17 @@ class myHtmlFrame(wx.Frame):
         self.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnClick)
         self.html_win.Bind(wx.EVT_TEXT_COPY, self.OnTextCopy)
 
-    def SetPage(self, source,urls_titles,processing_function):
-        self.links = make_list_source_from_urls_titles(urls_titles,processing_function)
-        self.source = source
-        self.html_win.SetPage(source)
+    def SetPage(self, *args):
+        # bookmarks window - make links available in appropriate format for copying as well as page source
+        if len(args) == 3:
+            source, urls_titles, processing_function = args
+            self.links = make_list_source_from_urls_titles(urls_titles,processing_function)
+            self.source = source
+        # help window - just set page source
+        if len(args) == 1:
+            source = args[0]
+            self.source = source
+        self.html_win.SetPage(self.source)
         return self
 
     def OnTextCopy(self, event):
