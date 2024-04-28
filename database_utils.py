@@ -55,11 +55,14 @@ def get_results(curs, query):
 
 def places_by_tag(tagID):
     """ takes a tagID and returns all links with that tag i.e. parent field - the foreign key is important field """
-    return db_connect().execute("""SELECT id,type,parent,title,fk from moz_bookmarks WHERE parent == ? AND type == 1 ORDER BY title;""", (tagID,)).fetchall()
+    return db_connect().execute(
+        """SELECT id,type,parent,title,fk from moz_bookmarks WHERE parent == ? AND type == 1 ORDER BY title;""",
+        (tagID,)).fetchall()
+
 
 def get_tags(conn):
-    return conn.execute("""SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title""").fetchall()
-
+    return conn.execute(
+        """SELECT id,type,parent,title from moz_bookmarks WHERE parent == 4 AND type == 2 ORDER BY title""").fetchall()
 
 
 def is_bookmarks_file() -> bool:
@@ -172,7 +175,8 @@ def get_table_schema(table_name):
     # allow tables names that are alphanumeric or with underscores or dashes
     sanitised_name = "".join([a for a in table_name if a.isalnum() or a in [c for c in "_-"]])
     try:
-        if db_connect().execute('SELECT 1 FROM sqlite_master WHERE type="table" and name= ?;',(sanitised_name,)).fetchall() is not None:
+        if db_connect().execute('SELECT 1 FROM sqlite_master WHERE type="table" and name= ?;',
+                                (sanitised_name,)).fetchall() is not None:
             # OK table exists as is - so use table name
             return get_results(db_cursor(db_connect()), f"PRAGMA table_info({sanitised_name});")
     finally:
@@ -233,7 +237,7 @@ def title_urls_from_IDs(ids):
 
 def urls_from_tagID(id):
     """given a single id for a tag from moz_bookmarks table return the urls and titles (via retrieval of the foreign keys)"""
-    return title_urls_from_IDs(bookmarks_fk_set( places_by_tag(id)))
+    return title_urls_from_IDs(bookmarks_fk_set(places_by_tag(id)))
 
 
 def urls_from_combinedtagname(combinedtagname, dual_tag_non_zero_dict):

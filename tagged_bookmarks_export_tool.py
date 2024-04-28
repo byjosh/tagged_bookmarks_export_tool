@@ -102,7 +102,7 @@ class MainFrame(wx.Frame):
         self.pnlA.sizer.Add(export_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlB.sizer.Add(tags_area_message,
-                            wx.SizerFlags().Border( wx.LEFT, self.margin * 2))
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.SetFocus()
 
         # record initial format choice and resent as needed via EVT_CHOICE
@@ -159,9 +159,8 @@ class MainFrame(wx.Frame):
         sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
         self.set_sizers()
         # print("name ",self.Name)
-        self.SetSize(wx.Size(width, height+1))
+        self.SetSize(wx.Size(width, height + 1))
         panel.Layout()
-
 
     def open_or_export(self, format_choice):
         """Export file or opening window in response to event"""
@@ -204,7 +203,7 @@ class MainFrame(wx.Frame):
         if format_choice != csv_choice:
             html_page_source = full_html(urls_titles, title, export_format_choices[format_choice])
             myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
-                html_page_source,urls_titles,export_format_choices[format_choice]).Show()
+                html_page_source, urls_titles, export_format_choices[format_choice]).Show()
         else:
             csv_file_dialog(urls_titles)
 
@@ -313,20 +312,18 @@ class MainFrame(wx.Frame):
 
             self.pnl.Layout()
             # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
-            self.SetSize(wx.Size(width, height-1))
+            self.SetSize(wx.Size(width, height - 1))
         else:
             self.SetStatusText("Not an appropriate bookmarks file - try another file?")
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
                                               label="Last opened file lacks necessary database tables (moz_places and moz_bookmarks)\nIs it a places.sqlite bookmarks file from Firefox browser?\nTry another sqlite file?"),
-                                wx.SizerFlags().Border( wx.LEFT , self.margin * 2))
+                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
 
         self.set_sizers()
 
         self.pnl.Layout()
         # TODO: the following is terrible hack - changing by 1 pixel to get auto-layout working
-        self.SetSize(wx.Size(width, height+1))
-
-
+        self.SetSize(wx.Size(width, height + 1))
 
     def OnAbout(self, event):
         """Display an About Dialog"""
@@ -347,7 +344,7 @@ class MainFrame(wx.Frame):
     def OnHelp(self, event):
         """Show Help file (single page HTML)"""
         x_pos, y_pos = self.GetPosition()
-        width,height = self.GetSize()
+        width, height = self.GetSize()
         title = "Tagged bookmarks export tool - Help"
         html_text = f'<html><head><title>{title}</title><style></style></head><body>\
         <h1>Help</h1>\
@@ -389,7 +386,7 @@ class myHtmlFrame(wx.Frame):
         # bookmarks window - make links available in appropriate format for copying as well as page source
         if len(args) == 3:
             source, urls_titles, processing_function = args
-            self.links = make_list_source_from_urls_titles(urls_titles,processing_function)
+            self.links = make_list_source_from_urls_titles(urls_titles, processing_function)
             self.source = source
         # help window - just set page source
         if len(args) == 1:
@@ -409,7 +406,7 @@ class myHtmlFrame(wx.Frame):
 
     def OnClick(self, event):
         """Handles when HTML link is clicked - opens in browser or saves HTML file for href == # """
-        special_hrefs = ["#","##"]
+        special_hrefs = ["#", "##"]
         if event.GetLinkInfo().GetHref() not in special_hrefs:
             webbrowser.open(event.GetLinkInfo().GetHref())
         if event.GetLinkInfo().GetHref() == "##":
@@ -431,7 +428,7 @@ class myHtmlFrame(wx.Frame):
                 pathname = fileDialog.GetPath()
                 try:
                     with open(pathname, 'w') as file:
-                        file.write(self.source.replace(instructional_text,""))
+                        file.write(self.source.replace(instructional_text, ""))
                 except IOError:
                     wx.LogError("Cannot save current data in file '%s'." % pathname)
 
