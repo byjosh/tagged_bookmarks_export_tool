@@ -36,9 +36,9 @@ def make_list_source_from_urls_titles(urls_titles, processing_function=export_fo
     '''
 
     fragment = '<section id="links">'
-    # id_position = 0
-    url_position = 0
-    title_position = 1
+    id_position = 0
+    url_position = 1
+    title_position = 2
     for url_title in urls_titles:
         url = url_title[url_position]
         title = url_title[title_position]

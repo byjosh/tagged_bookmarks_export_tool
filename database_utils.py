@@ -27,7 +27,7 @@ def db_connect():
 
 
 def db_cursor(conn):
-    """ return a cursor """
+    """ return a cursor - deprecated for with use of db_connect().execute().fetchall() allowing for prepared statements """
     return conn.cursor()
 
 
@@ -99,7 +99,11 @@ def dual_tag_dict(tag_dict):
     """Takes tag names as dict and returns a single sorted dict of all possible tag name combinations of two
     >>> dual_tag_dict({'A': 5748, 'B': 12126})
     {'A && B': (5748, 12126)}
-    
+
+    :param tag_dict: dictionary of tag IDs indexed by tag name
+    :type tag_dict: dict
+    :return: dictionary of
+    :rtype:
     """
     tagID_location = 0
     tagName_location = -1
@@ -119,8 +123,16 @@ def dual_tag_dict(tag_dict):
 
 
 def dual_tag_non_zero_dict(dual_tag_dict):
-    """ {'A & B ': (5748, 12126), } is dual tag dict input
+    """tag combinations that have overlap - i.e. non_zero_result
+    {'A & B ': (5748, 12126), } is dual tag dict input
     output dict is {'A & B': [277529], }
+
+
+
+    :param dual_tag_dict: a dictionary indexed by the addition of tagnames, 'tagA & tagB' containing tuple of IDs (tagA_ID,tagB_ID)
+    :type dual_tag_dict: dict
+    :return: dictionary of links referenced by both tags (i.e. set intersection)
+    :rtype: dict
     """
     output_dict = {}
     intermediate_dict = {}
@@ -146,10 +158,14 @@ def dual_tag_non_zero_dict(dual_tag_dict):
 
 def bookmarks_fk_set(results):
     """takes results from moz_bookmarks searched with places_by_tag and returns fk fields as list for retrieval from moz_places
-    
+
     >>> bookmarks_fk_set([(2377, 1, 2376, None, 47723), (2397, 1, 2376, None, 47852), (2593, 1, 2376, None, 50222), (2906, 1, 2376, None, 20066), (3242, 1, 2376, None, 59288), (4020, 1, 2376, None, 71910), (4339, 1, 2376, None, 76463), (6887, 1, 2376, None, 122759), (12330, 1, 2376, None, 197177), (13656, 1, 2376, None, 217901), (16359, 1, 2376, None, 264719), (16641, 1, 2376, None, 269755), (16750, 1, 2376, None, 270757), (17063, 1, 2376, None, 273252)])
     [47723, 47852, 50222, 20066, 59288, 71910, 76463, 122759, 197177, 217901, 264719, 269755, 270757, 273252]
 
+    :param results: list of tuples retrieved from moz_bookmarks with places_by_tag
+    :type results: list
+    :return: list of foreign keys
+    :rtype: list
     """
     id_list = []
     fk_location = -1  # fk should be last in tuple
@@ -164,13 +180,21 @@ def bookmarks_fk_set(results):
 def get_database_table_names():
     """returns table names from sqlite_schema table
     Troubleshooting function - used for developing table queries when this file is imported
+
+    :return: names as tuples in a list
+    :rtype: list
     """
-    return get_results(db_cursor(db_connect()), "SELECT name from sqlite_schema WHERE type='table';")
+    return db_connect().execute("SELECT name from sqlite_schema WHERE type='table';").fetchall()
 
 
 def get_table_schema(table_name):
     """returns column info for given table name
     Troubleshooting function - used for developing table queries when this file is imported
+
+    :param table_name: name of table
+    :type table_name: str
+    :return: schema as list of tuples detailing field details
+    :rtype: list
     """
     # allow tables names that are alphanumeric or with underscores or dashes
     sanitised_name = "".join([a for a in table_name if a.isalnum() or a in [c for c in "_-"]])
@@ -187,21 +211,24 @@ def get_description_via_url(url):
     """given URL fetch description
     Not currently in use
     """
-    get_results(db_cursor(db_connect()),
-                f"SELECT description from moz_places where url ={url} ;")
+    return db_connect().execute("SELECT description from moz_places where url = ? ;",(url,)).fetchall()
 
 
 def title_urls_from_IDs(ids):
-    """takes fk list from moz_bookmarks which is id in moz_places and returns a list of IDs, urls and titles as tuples"""
+    """takes fk list from moz_bookmarks which is id in moz_places and returns a list of urls and titles as tuples
 
+    :param ids: list of foreign key ids from moz_bookmarks which are IDs in moz_places
+    :type ids: list
+    :return: list of tuples of urls and titles
+    :rtype: list
+    """
     def get_url(el):
         return el[1]
 
     output_list = []
     for id in ids:
-        results = get_results(db_cursor(db_connect()),
-                              """SELECT id,url,title from moz_places WHERE moz_places.id == {} ORDER BY url,title;""".format(
-                                  id))
+        results = db_connect().execute("""SELECT id,url,title from moz_places WHERE moz_places.id == ? ORDER BY url,title;""",(
+                                  id,)).fetchall()
         # print("moz_places_result",results)
         if len(results) != 1:
             print("length not 1 results : ", results)
@@ -213,14 +240,13 @@ def title_urls_from_IDs(ids):
             if title is None:
                 title = ""
 
-            bookmarks_fk_result = get_results(db_cursor(db_connect()),
-                                              """SELECT id,type,parent,title,fk from moz_bookmarks WHERE fk == {} AND type == 1 ORDER BY title;""".format(
-                                                  results[0][0]))
+            bookmarks_fk_result = db_connect().execute("""SELECT id,type,parent,title,fk from moz_bookmarks WHERE fk == ? AND type == 1 ORDER BY title;""",(
+                                                  results[0][0],)).fetchall()
             # print("moz_bookmarks_result",bookmarks_fk_result)
             for each_result in bookmarks_fk_result:
                 if (each_result[-2] is not None) and len(each_result[-2]) > len(title):
                     title = each_result[-2]
-            constructed_tuple = (results[0][1], title)
+            constructed_tuple = (results[0][0],results[0][1], title)
             output_list.append(constructed_tuple)
             # print("success - constructed tuple ", constructed_tuple )
             # test_result = bookmarks_fk_result[0][-2] is None
