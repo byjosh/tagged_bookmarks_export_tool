@@ -23,7 +23,7 @@ def csv_only(urls_titles, filepath):
 
 
 export_format_choices = {"HTML links": html_only, "HTML links + plaintext URL": html_with_plain_url,
-                         "HTML file that could be copied to text editor for CSV": html_csv,
+                         "HTML file that could be copied to text editor for CSV": html_csv, "Export to Google Sheets": None,
                          "CSV - save to CSV file (no preview)": csv_only}
 instructional_text = f'<p>Click links to open in browser or perform action.</p><p>Selecting with mouse then Ctrl+C (or Cmd+C) in this window copies only plain text.<br />To paste HTML text with clickable links <a href="#">save as HTML file</a> then copy/paste from browser <br />or <a href="##">copy all text below inc. any links to clipboard as HTML</a></p><br />'
 
@@ -38,7 +38,7 @@ def make_list_source_from_urls_titles(urls_titles, processing_function=export_fo
     fragment = '<section id="links">'
     id_position = 0
     url_position = 1
-    title_position = 2
+    title_position = -1
     for url_title in urls_titles:
         url = url_title[url_position]
         title = url_title[title_position]
