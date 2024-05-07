@@ -1,16 +1,79 @@
 # Copyright: josh - web@byjosh.co.uk github.com/byjosh
 # Licensed under GPLv2 - see LICENSE.txt in repository 
 # or https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-
+import os.path
 import webbrowser
 import wx
 from wx.html import HtmlWindow
 import wx.lib.inspection
-from database_utils import *
+from database_utils import db_util
 from html_utils import *
+import sheets
+import time
+
+"""import logging
+logging.basicConfig(level=logging.DEBUG)
+log_main = logging.getLogger(name="tbet MAIN")
+log_main.setLevel(logging.DEBUG)
+
+Use find and replace in IDE to uncomment # from log_main calls - see comment in database_utils about speed
+"""
 
 html_page_source = ""
-specify_file_path()
+
+def get_sheet_range(data):
+    """
+
+    >>> get_sheet_range([('https://leanpub.com/b/python-craftsman', 'The Python Craftsman', '2024-04-25 21:08:11.336000', "The Python Craftsman series comprises The Python Apprentice, The Python Journeyman, and The Python Master. The first book is primarily suitable for programmers with some experience of programming in another language. If you don't have any experience with p"), ('https://libro.fm/audiobooks/9781508279532-good-and-mad', 'Libro.fm | Good and Mad Audiobook', '2024-04-25 21:05:46.194000', '*Updated with a new introduction* Journalist Rebecca Traister’s New York Times bestselling exploration of the transformative power of female anger and its ability to transcend into a political movement is “a hopeful, maddening compendium of righteous femin'), ('https://uk.bookshop.org/p/books/verified-how-to-think-straight-get-duped-less-and-make-better-decisions-about-what-to-believe-online-mike-caulfield/7439531?ean=9780226822068', 'Verified: How to Think Straight, Get Duped Less, and Make Better Decisions about What to Believe Online a book by Mike Caulfield and Sam Wineburg.', '2024-04-25 21:06:23.047000', 'An indispensable guide for telling fact from fiction on the internet—often in less than 30 seconds. The internet brings information to our fingertips almost instantly. The result is that we often jump to thinking too fast, without taking a few moments to v')])
+    'A1:D3'
+
+    :param data:
+    :type data:
+    :return sheet_range : string detailing in A1 notation a range large enough for data
+    :rtype: str
+    """
+
+
+    rows = len(data)
+    cols = 0
+    for iterabl in data:
+        if (len(iterabl) -1) > cols:
+            cols = len(iterabl)-1
+
+    sheet_range = "A1:"
+    sheet_range += [x for x in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"][cols] # TODO: generator for this?
+    sheet_range += str(rows)
+
+    return sheet_range
+
+def html_link(data):
+    """
+    :param data: tuple with link as 2nd field and title as last
+    :type data: tuple
+    :return:  html link with descriptive title
+    :rtype: str
+    """
+    return f'<a href="{html.escape(data[1])}" > {html.escape(data[-1])}</a>'
+
+def sheets_link(data):
+    """
+    :param data: tuple with link as 2nd field and title as last
+    :type data: tuple
+    :return:  link with descriptive title formatted for Google Sheets USER_ENTERED input
+    :rtype: str
+    """
+    return f'=HYPERLINK("{html.escape(data[1])}","{html.escape(data[-1])}")'
+
+field_orders = {"HTML links":{"output_order":(html_link,)},"HTML links, plaintext url":{"output_order":(html_link, 1)},"HTML link, description,url, timestamp":{"output_order":(html_link, -2,1,-3)},"plain url, title,timestamp, description":{"output_order":(1, -1,-3,-2)},}
+
+def csv_only(urls_titles, filepath):
+    import csv
+    with open(filepath, mode="w") as file:
+        csv.writer(file, dialect='excel', quoting=csv.QUOTE_ALL).writerows(urls_titles)
+
+
+export_mechanisms = {"HTML/text - window where one can preview, save, copy": None, "Export to Google Sheets": None,
+                         "CSV - save to CSV file (no preview)": csv_only}
 
 
 class TabCheckbox(wx.CheckBox):
@@ -25,6 +88,81 @@ class TabCheckbox(wx.CheckBox):
 
     def AcceptsFocus(self):
         return True
+
+class SheetsDialogue(wx.Frame):
+    """
+    Frame that collects info for Google Sheets export - name or sheet ID
+    """
+
+    def __init__(self, *args, **kw):
+        self.data = kw['data']
+        kw.pop("data")
+        self.sheet_range = get_sheet_range(self.data)
+        # ensure the parent's __init__ is called
+        super(SheetsDialogue, self).__init__(*args, **kw)
+        self.pnl = wx.ScrolledWindow(self, wx.ID_ANY, name="Main pnl Panel as labelled", size=wx.Size(600, 600))
+        self.pnl.SetScrollbars(1, 1, 1, 1)
+        self.margin = 20
+        # list for convenience
+        self.panels_sizers = []
+
+        self.pnlA = wx.Panel(self.pnl, name="Panel_A_top")
+        self.sizer = wx.BoxSizer(orient=wx.VERTICAL)
+        self.pnlA.sizer = wx.BoxSizer(orient=wx.VERTICAL)
+        self.sizer.Add(self.pnlA, wx.SizerFlags().Top())
+
+        header_text = "Export to Sheets:- \n"
+        header_text += "read help file for the info\n"
+        header_text += "regarding configuration.\n\n"
+        header_text += f'Data will be entered in range {self.sheet_range}'
+        header_area_message = wx.StaticText(self.pnlA, label=header_text)
+
+
+        file_name = wx.TextCtrl(self.pnlA,id=130,name="New filename",value="New sheet name")
+
+        sheet_ID = wx.TextCtrl(self.pnlA,id=131, name="Sheet ID", value="Sheet ID")
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(header_area_message, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label="To export to new sheet enter new sheet name:"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(file_name, wx.SizerFlags().Expand().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(wx.Button(self.pnlA,id=110,label="Export to new file using new sheet name"), wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label="To export to existing sheet enter sheetID. Example: if URL was\n https://docs.google.com/spreadsheets/d/1-ABC123def/edit#gid=0\nthen 1-ABC123def would be ID to enter below:"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(sheet_ID, wx.SizerFlags().Expand().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.pnlA.sizer.Add(wx.Button(self.pnlA,id=111, label="Export to existing sheet using sheet ID"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer)])
+        self.set_sizers()
+        self.SetSize(wx.Size(600, 600))
+
+        self.Bind(wx.EVT_BUTTON,self.OnEVTButton)
+
+    def set_sizers(self):
+        """Create a panel and add to panels property - helps with repetitive layout task"""
+        for item in self.panels_sizers:
+            pnl, sizer = item
+            pnl.SetSizer(sizer)
+
+    def OnEVTButton(self,event):
+        if event.GetEventObject().Id == 110:
+            title = wx.FindWindowById(130,self.pnlA).GetLineText(0).strip()
+            sheets.main(self.data,title=title,sheet_range=self.sheet_range)
+        if event.GetEventObject().Id == 111:
+            id = wx.FindWindowById(131,self.pnlA).GetLineText(0).strip()
+            print("ID as entered:",id)
+            sheets.main(self.data,sheet_id=id,sheet_range=self.sheet_range)
+
+
+
 
 
 class MainFrame(wx.Frame):
@@ -94,21 +232,36 @@ class MainFrame(wx.Frame):
         self.pnlA.sizer.Add(self.multitag_check, wx.SizerFlags().Border(wx.LEFT, self.margin))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                          label="Export format - choose how bookmarks will appear: \npage of HTML links with/without plaintext URLs or save direct to CSV"),
+                                          label="Field format:"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.25)))
+        field_format_box = wx.Choice(self.pnlA, id=100, choices=[k for k in field_orders],
+                                      name="Info format")
+        self.pnlA.sizer.Add(field_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.25)))
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label="Export via:"),
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-        export_format_box = wx.Choice(self.pnlA, id=101, choices=[k for k in export_format_choices],
-                                      name="Export Format")
-        self.pnlA.sizer.Add(export_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        export_mechanism_box = wx.Choice(self.pnlA, id=101, choices=[k for k in export_mechanisms],
+                                      name="Export mechanism")
+        self.pnlA.sizer.Add(export_mechanism_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label="N.B. export via Google Sheets requires configuration - see help file"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlB.sizer.Add(tags_area_message,
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.SetFocus()
 
         # record initial format choice and resent as needed via EVT_CHOICE
-        format_window = wx.FindWindowById(101, self.pnlA)
-        format_choice_index = format_window.GetSelection()
-        self.format_choice = format_window.GetString(format_choice_index)
+        export_mechanism_window = wx.FindWindowById(101, self.pnlA)
+        export_choice_index = export_mechanism_window.GetSelection()
+        self.export_choice = export_mechanism_window.GetString(export_choice_index)
+
+        order_window = wx.FindWindowById(100, self.pnlA)
+        order_choice_index = order_window.GetSelection()
+        self.order_choice = order_window.GetString(order_choice_index)
 
         # try only showing after open file
         self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer), (self.pnlB, self.pnlB.sizer)])
@@ -138,8 +291,9 @@ class MainFrame(wx.Frame):
         width, height = self.GetSize()
         if self.multitag_added is True:
             return
-        tags = tag_dict(get_tags(db_connect()))
-        self.multitag_links_dict = dual_tag_non_zero_dict(dual_tag_dict=dual_tag_dict(tags))
+
+        tags = self.db.get_tag_dict(self.db.get_tags())
+        self.multitag_links_dict = self.db.dual_tag_non_zero_dict(double_tag_dict=self.db.get_dual_tag_dict(tags))
         if self.multitag_added is False and len(self.multitag_links_dict) > 0:
             multi_tag_list_header = wx.StaticText(self.pnlB,
                                                   label="Entries for items tagged with both tag A && tag B\ncheck box to show bookmarked links")
@@ -158,11 +312,30 @@ class MainFrame(wx.Frame):
 
         sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, 50))
         self.set_sizers()
-        # print("name ",self.Name)
+
         self.SetSize(wx.Size(width, height + 1))
         panel.Layout()
 
-    def open_or_export(self, format_choice):
+    def data_formatter(self,data_piece, output_format):
+        output_list = []
+        for item in output_format:
+            if type(item) == int:
+                output_list.append(data_piece[item])
+            elif repr(type(item)) == "<class 'function'>" and item.__name__ == 'html_link':
+                if self.export_choice == "Export to Google Sheets":
+                    output_list.append(sheets_link(data_piece))
+                # if item is a function call it on the data (tuple etc) and add result to output
+                elif self.export_choice != "Export to Google Sheets":
+                    output_list.append(item(data_piece))
+        return tuple(output_list)
+
+    def format_the_data(self,data, output_order):
+        return_list = []
+        for d in data:
+            return_list.append(self.data_formatter(d, output_format=output_order))
+        return return_list
+
+    def open_or_export(self, export_choice):
         """Export file or opening window in response to event"""
 
         global html_page_source
@@ -170,7 +343,10 @@ class MainFrame(wx.Frame):
         x_pos, y_pos = self.GetPosition()
         width, height = self.GetSize()
         # pure CSV for export is final format
-        csv_choice = [k for k in export_format_choices][-1]
+        csv_choice = [k for k in export_mechanisms][-1]
+        sheets_choice = [k for k in export_mechanisms][-2]
+        non_html_choices = [csv_choice, sheets_choice]
+        html_choice = [k for k in export_mechanisms][0]
 
         def csv_file_dialog(urls_titles):
             # CSV save file dialog - uses csv_only function from html_utils.
@@ -194,27 +370,47 @@ class MainFrame(wx.Frame):
             title = set_tuple[1]
         # searching for && is checking for single tags
         is_dual_tag = [x for x in self.tags][0][1].find("&&") != -1
+        # log_main.debug(f"star: {time.time()}")
         if is_dual_tag is False:
-            urls_titles = urls_from_tagID(tagID)
+            # print("unformatted", self.db.urls_from_tagID(tagID))
+            urls_titles = self.format_the_data(self.db.urls_from_tagID(tagID),field_orders[self.order_choice]["output_order"])
+            # print("formatted as urls_titles", urls_titles,len(urls_titles),"data format length",len(field_orders[self.order_choice]["output_order"]))
+            # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
         if is_dual_tag is True:
-            urls_titles = urls_from_combinedtagname(title, self.multitag_links_dict)
+            urls_titles = self.format_the_data(self.db.urls_from_combinedtagname(title, self.multitag_links_dict),field_orders[self.order_choice]["output_order"])
             title = title.replace("&&", "&")
+            # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
-        if format_choice != csv_choice:
-            html_page_source = full_html(urls_titles, title, export_format_choices[format_choice])
+
+        if export_choice == html_choice:
+            html_page_source = full_html(urls_titles, title)
             myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
-                html_page_source, urls_titles, export_format_choices[format_choice]).Show()
-        else:
+                html_page_source, urls_titles).Show()
+        elif export_choice == sheets_choice:
+            # format the data
+            # open a window with data
+            # either open a new sheet or receive ID of existing sheet
+            #if os.path.exists("credentials.json") is not True or os.path.isfile("credentials.json") is not True :
+             #   wx.MessageBox(f'Read help file regarding necessary configuration\nfor export to Google Sheets\nThe necessary credentials.json file is not in the same directory as the tool\nor is not a file')
+            #if os.path.exists("credentials.json") is True and os.path.isfile("credentials.json") is True:
+            SheetsDialogue(None, size=wx.Size(600, 600), title='Export to to Sheets',data=urls_titles).Show()
+
+        elif export_choice == csv_choice :
             csv_file_dialog(urls_titles)
 
     def OnEVTChoice(self, event):
-        format_window = wx.FindWindowById(101, self.pnlA)
-        format_choice_index = format_window.GetSelection()
-        self.format_choice = format_window.GetString(format_choice_index)
+        export_mechanism_window = wx.FindWindowById(101, self.pnlA)
+        export_choice_index = export_mechanism_window.GetSelection()
+        self.export_choice = export_mechanism_window.GetString(export_choice_index)
+        # print("index", export_choice_index,"choice", self.export_choice)
+        order_window = wx.FindWindowById(100, self.pnlA)
+        order_choice_index = order_window.GetSelection()
+        self.order_choice = order_window.GetString(order_choice_index)
+        # print("index", order_choice_index, "choice", self.order_choice)
         if len(self.tags) == 1:
             # only one checkbox checked so changing format likely to indicate a different format wanted
             # so open or export
-            self.open_or_export(self.format_choice)
+            self.open_or_export(self.export_choice)
 
     def OnEVTCheckBox(self, event):
 
@@ -230,12 +426,12 @@ class MainFrame(wx.Frame):
                 self.tags.remove(id_tagname_tuple)
 
             if len(self.tags) == 1:
-                self.open_or_export(self.format_choice)
+                self.open_or_export(self.export_choice)
 
 
         elif event.GetEventObject().Name == "multitag_categories" and (
-                specify_file_path() is not None) and event.GetEventObject().GetValue():
-            if is_bookmarks_file():
+                self.db.specify_file_path() is not None) and event.GetEventObject().GetValue():
+            if self.db.is_bookmarks_file():
                 self.add_multitag_checkboxes(self.pnlB.sizer, self.pnlB)
             else:
                 self.SetStatusText("Need a bookmarks file to append categories for items with 2 tags! ")
@@ -272,7 +468,8 @@ class MainFrame(wx.Frame):
     def OnOpen(self, event):
         """File Open dialogue"""
         width, height = self.GetSize()
-        # pick file
+        # pick file & set db instance
+
         with wx.FileDialog(self, "Open sqlite file", wildcard="sqlite files (*.sqlite)|*.sqlite",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
 
@@ -282,8 +479,8 @@ class MainFrame(wx.Frame):
             if len(pathname) == 0:
                 return
             self.multitag_added = False
-            # use the pathname just retrieve to set filepath in function from database_utils
-            specify_file_path(file_path=pathname)
+            # use the pathname just initiate a new database connection
+            self.db = db_util(pathname)
 
         # remove and add back the lower Panel B
         self.tags = set()
@@ -293,13 +490,14 @@ class MainFrame(wx.Frame):
         self.pnlB.sizer = wx.FlexGridSizer(cols=1)
         self.panels_sizers.append((self.pnlB, self.pnlB.sizer))
         self.sizer.Add(self.pnlB, wx.SizerFlags().Top().Expand())
-        if is_bookmarks_file():
+        # log_main.debug(self.db.specify_file_path())
+        if self.db.is_bookmarks_file():
             # append tags to lower Panel B
             self.pnlB.sizer.Add(wx.StaticText(self.pnlB,
                                               label="Entries with items tagged with tag below\ncheck box to show bookmarked links"),
                                 wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, self.margin * 2))
 
-            tags = tag_dict(get_tags(db_connect()))
+            tags = self.db.get_tag_dict(self.db.get_tags())
             for tag in tags:
                 self.pnlB.sizer.Add(TabCheckbox(self.pnlB, id=tags[tag], label=tag),
                                     wx.SizerFlags().Align(wx.TOP).Border(wx.LEFT, int(self.margin * 2)))
@@ -384,21 +582,22 @@ class myHtmlFrame(wx.Frame):
 
     def SetPage(self, *args):
         # bookmarks window - make links available in appropriate format for copying as well as page source
-        if len(args) == 3:
-            source, urls_titles, processing_function = args
-            self.links = make_list_source_from_urls_titles(urls_titles, processing_function)
+        if len(args) == 2:
+            source, urls_titles = args
+            self.links = make_list_source_from_urls_titles(urls_titles)
             self.source = source
         # help window - just set page source
         if len(args) == 1:
             source = args[0]
             self.source = source
         self.html_win.SetPage(self.source)
+        # log_main.debug(f"end: {time.time()}")
         return self
 
     def OnTextCopy(self, event):
         text = self.html_win.SelectionToText()
         # from random import randint # random int to log event fired
-        # print("Text copied ",randint(1,100))
+        # log_main.debug("Text copied ",randint(1,100))
         if wx.TheClipboard.Open():
             wx.TheClipboard.Clear()
             wx.TheClipboard.SetData(wx.TextDataObject(text))

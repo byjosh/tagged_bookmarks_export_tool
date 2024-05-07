@@ -16,18 +16,13 @@ def html_csv(url, title):
     return f'<br />{html.escape(url)},"{html.escape(title)}"'
 
 
-def csv_only(urls_titles, filepath):
-    import csv
-    with open(filepath, mode="w") as file:
-        csv.writer(file, dialect='excel', quoting=csv.QUOTE_ALL).writerows(urls_titles)
 
 
-export_format_choices = {"HTML links": html_only, "HTML links + plaintext URL": html_with_plain_url,
-                         "HTML file that could be copied to text editor for CSV": html_csv, "Export to Google Sheets": None,
-                         "CSV - save to CSV file (no preview)": csv_only}
+
+
 instructional_text = f'<p>Click links to open in browser or perform action.</p><p>Selecting with mouse then Ctrl+C (or Cmd+C) in this window copies only plain text.<br />To paste HTML text with clickable links <a href="#">save as HTML file</a> then copy/paste from browser <br />or <a href="##">copy all text below inc. any links to clipboard as HTML</a></p><br />'
 
-def make_list_source_from_urls_titles(urls_titles, processing_function=export_format_choices["HTML links + plaintext URL"]):
+def make_list_source_from_urls_titles(urls_titles):
     '''Take a list of tuples from titles_urls_from_IDs
     
     >>> make_list_source_from_urls_titles([("https://www.example.com","Example.com Homepage"),("http://example.com","Example.com domain")])
@@ -40,26 +35,35 @@ def make_list_source_from_urls_titles(urls_titles, processing_function=export_fo
     url_position = 1
     title_position = -1
     for url_title in urls_titles:
-        url = url_title[url_position]
-        title = url_title[title_position]
-        if url is not None and title is not None:
-            fragment += processing_function(url, title)
-        elif url is None or title is None:
-            print("one of these was none of out url,title", url, title)
+        i = 0
+        length = len(url_title)-1
+        for field in url_title:
+
+            if i == 0:
+                fragment += f'<p>{field}'
+
+            elif i > 0 and i != length:
+                fragment += f', {field}'
+            elif i == length:
+                fragment += f', {field}'
+                fragment += '</p>'
+
+            i = i + 1
+
     fragment += '</section>'
     return fragment
 
 
-def full_html(urls_titles, tag_text, processing_function=export_format_choices["HTML links + plaintext URL"]):
+def full_html(urls_titles, tag_text):
     """ This generates full page html
 
     >>> full_html([('https://www.example.com','Example.com Homepage'),('http://example.com','Example.com domain')],'TagTest')
     '<html><head><title>My links</title></head><body><main><h1>TagTest links bookmarked</h1><p>number of links: 2</p><p>Click links to open in browser or perform action.</p><p>Selecting with mouse then Ctrl+C (or Cmd+C) in this window copies only plain text.<br />To paste HTML text with clickable links <a href="#">save as HTML file</a> then copy/paste from browser <br />or <a href="##">copy all text below inc. any links to clipboard as HTML</a></p><br /><section id="links"><p><a href="https://www.example.com">Example.com Homepage</a>, https://www.example.com</p><p><a href="http://example.com">Example.com domain</a>, http://example.com</p></section></main></body></html>'
     
     """
-
+    print(urls_titles)
     page = f'<html><head><title>My links</title></head><body><main><h1>{tag_text.replace("&&", "&")} links bookmarked</h1><p>number of links: {len(urls_titles)}</p>{instructional_text}'
-    page += make_list_source_from_urls_titles(urls_titles=urls_titles, processing_function=processing_function)
+    page += make_list_source_from_urls_titles(urls_titles)
     page += '</main></body></html>'
     return page
 
