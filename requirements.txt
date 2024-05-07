@@ -2,3 +2,6 @@ numpy==1.26.4
 pillow==10.3.0
 six==1.16.0
 wxPython==4.2.1
+google-api-python-client==2.127.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
