@@ -9,6 +9,7 @@ import wx.lib.inspection
 from database_utils import db_util
 from html_utils import *
 import sheets
+import drive
 import time
 
 """import logging
@@ -20,6 +21,7 @@ Use find and replace in IDE to uncomment # from log_main calls - see comment in 
 """
 
 html_page_source = ""
+
 
 def get_sheet_range(data):
     """
@@ -33,18 +35,18 @@ def get_sheet_range(data):
     :rtype: str
     """
 
-
     rows = len(data)
     cols = 0
     for iterabl in data:
-        if (len(iterabl) -1) > cols:
-            cols = len(iterabl)-1
+        if (len(iterabl) - 1) > cols:
+            cols = len(iterabl) - 1
 
     sheet_range = "A1:"
-    sheet_range += [x for x in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"][cols] # TODO: generator for this?
+    sheet_range += [x for x in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"][cols]  # TODO: generator for this?
     sheet_range += str(rows)
 
     return sheet_range
+
 
 def html_link(data):
     """
@@ -55,6 +57,7 @@ def html_link(data):
     """
     return f'<a href="{html.escape(data[1])}" > {html.escape(data[-1])}</a>'
 
+
 def sheets_link(data):
     """
     :param data: tuple with link as 2nd field and title as last
@@ -64,7 +67,12 @@ def sheets_link(data):
     """
     return f'=HYPERLINK("{html.escape(data[1])}","{html.escape(data[-1])}")'
 
-field_orders = {"HTML links":{"output_order":(html_link,)},"HTML links, plaintext url":{"output_order":(html_link, 1)},"HTML link, description,url, timestamp":{"output_order":(html_link, -2,1,-3)},"plain url, title,timestamp, description":{"output_order":(1, -1,-3,-2)},}
+
+field_orders = {"HTML links": {"output_order": (html_link,)},
+                "HTML links, plaintext url": {"output_order": (html_link, 1)},
+                "HTML link, description,url, timestamp": {"output_order": (html_link, -2, 1, -3)},
+                "plain url, title,timestamp, description": {"output_order": (1, -1, -3, -2)}, }
+
 
 def csv_only(urls_titles, filepath):
     import csv
@@ -72,8 +80,9 @@ def csv_only(urls_titles, filepath):
         csv.writer(file, dialect='excel', quoting=csv.QUOTE_ALL).writerows(urls_titles)
 
 
-export_mechanisms = {"HTML/text - window where one can preview, save, copy": None, "Export to Google Sheets": None,
-                         "CSV - save to CSV file (no preview)": csv_only}
+export_mechanisms = {"HTML/text - window where one can preview, save, copy": None,
+                     "Export to Google Sheets - read help re: configuration": None,
+                     "CSV - save to CSV file (no preview)": csv_only}
 
 
 class TabCheckbox(wx.CheckBox):
@@ -88,6 +97,102 @@ class TabCheckbox(wx.CheckBox):
 
     def AcceptsFocus(self):
         return True
+
+
+class SheetPopup(wx.Frame):
+    """
+    Frame for retrieving and choosing sheet name in spreadsheet - set as property on parent
+    """
+
+    def __init__(self, *args, **kw):
+        # ensure the parent's __init__ is called
+        super(SheetPopup, self).__init__(*args, **kw)
+        self.id = wx.FindWindowById(131, self.GetParent().pnlA).GetLineText(0).strip()
+        self.pnl = wx.ScrolledWindow(self, wx.ID_ANY, name="Main pnl Panel as labelled", size=wx.Size(600, 600))
+        self.pnl.SetScrollbars(1, 1, 1, 1)
+        self.margin = 20
+        # list for convenience
+        self.panels_sizers = []
+        self.pnlA = wx.Panel(self.pnl, name="Panel_A_top")
+        self.sizer = wx.BoxSizer(orient=wx.VERTICAL)
+        self.pnlA.sizer = wx.BoxSizer(orient=wx.VERTICAL)
+        self.sizer.Add(self.pnlA, wx.SizerFlags().Top())
+
+        if self.GetParent().sheet_id == "" or self.GetParent().sheet_id == "Spreadsheet ID":
+            wx.MessageBox(
+                "Spreadsheet ID has not been entered - cannot proceed to select or add sheets until you enter it")
+            self.Close()
+        elif self.GetParent().sheet_id != "" and self.GetParent().sheet_id != "Spreadsheet ID":
+            self.sheet_names = sheets.get_sheet_names(self.GetParent().sheet_id)
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+            main_text = f"N.B. Default in this window is clicking a button exports\nto spreadsheet with ID {self.id}\n\nTo exit WITHOUT exporting:\nclose window without clicking a button.\n\nButtons before the textbox below are existing sheet names\nclicking a button exports to that sheet"
+            self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                              label=main_text),
+                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+            for sheet in self.sheet_names:
+                self.pnlA.sizer.Add(wx.Button(self.pnlA, label=sheet.replace("&", "&&")),
+                                    wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+                self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+            self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                              label="Enter new sheet name in textbox below\n(name of tag(s) is prefilled as a suggested sheet name)"),
+                                wx.SizerFlags().Border(wx.LEFT, int(self.margin * 2)))
+            for tg in self.GetParent().GetParent().tags:
+                title = tg[1].replace("&&", "&")
+            self.pnlA.sizer.Add(wx.TextCtrl(self.pnlA, id=301, name="New sheet name", value=title),
+                                wx.SizerFlags().Expand().Border(wx.LEFT, int(self.margin * 2)))
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+            self.pnlA.sizer.Add(
+                wx.Button(self.pnlA, id=300, label="Create sheet using name in textbox above && export to it"),
+                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+            self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                              label=f'Clicking button above will create sheet && export to it\nin spreadsheet with ID {self.id}\n\n'),
+                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+
+        self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer)])
+        self.set_sizers()
+        self.SetSize(wx.Size(600, 600))
+        self.Bind(wx.EVT_BUTTON, self.OnEVTButton)
+
+    def set_sizers(self):
+        """Create a panel and add to panels property - helps with repetitive layout task"""
+        for item in self.panels_sizers:
+            pnl, sizer = item
+            pnl.SetSizer(sizer)
+
+    def OnEVTButton(self, event):
+        if event.GetEventObject().Id != 300:
+            self.GetParent().sheet_name = event.GetEventObject().Label
+            sheet_name_button_text = f"Choose sheet name/create sheet (current sheet = {event.GetEventObject().Label} )"
+            wx.FindWindowById(200, self.GetParent().pnlA).SetLabel(sheet_name_button_text)
+
+            self.GetParent().sheet_range = "'" + event.GetEventObject().Label + "'" + "!" + self.GetParent().sheet_range
+            sheets.main(self.GetParent().get_non_excluded_data(), sheet_id=self.id,
+                        sheet_range=self.GetParent().sheet_range)
+            self.GetParent().set_sizers()
+            self.GetParent().SetSize(wx.Size(600, 601))
+            self.GetParent().Close()
+        elif event.GetEventObject().Id == 300:
+            name = wx.FindWindowById(301, self.pnlA).GetLineText(0).strip().replace("''", "'")
+            sheet_name_button_text = f"Choose sheet name/create sheet (current sheet = {name} )"
+            if name in self.sheet_names:
+                message = f"The new sheet name you entered already exists in the spreadsheet with id {self.GetParent().sheet_id} - your options:\npick existing sheet\ntry different name\nor different spreadsheet?\n\nN.B. no data export as new sheet name already exists \n& thus conflicts with existing sheet"
+                wx.MessageBox(message, parent=self)
+            if name not in self.sheet_names:
+                self.GetParent().sheet_name = sheets.set_sheet_name(self.GetParent().sheet_id, name)
+
+                self.GetParent().sheet_range = "'" + name + "'" + "!" + self.GetParent().sheet_range
+                sheets.main(self.GetParent().get_non_excluded_data(), sheet_id=self.id,
+                            sheet_range=self.GetParent().sheet_range)
+                wx.FindWindowById(200, self.GetParent().pnlA).SetLabel(sheet_name_button_text)
+                from time import sleep
+                sleep(1)
+                self.GetParent().set_sizers()
+                self.GetParent().SetSize(wx.Size(600, 601))
+                self.GetParent().Close()
+
 
 class SheetsDialogue(wx.Frame):
     """
@@ -112,39 +217,102 @@ class SheetsDialogue(wx.Frame):
         self.sizer.Add(self.pnlA, wx.SizerFlags().Top())
 
         header_text = "Export to Sheets:- \n"
-        header_text += "read help file for the info\n"
+        header_text += "read help file for the info "
         header_text += "regarding configuration.\n\n"
-        header_text += f'Data will be entered in range {self.sheet_range}'
+        header_text += f'Data will be entered in range {self.sheet_range}\n\n'
+        header_text += "To export we need a spreadsheet ID for box labelled in bold\n"
+        header_text += "'Valid alphanumeric spreadsheet ID needed in box below'\n"
+        header_text += "create a new spreadsheet using box below\nor tick a box by existing spreadsheet."
+
         header_area_message = wx.StaticText(self.pnlA, label=header_text)
+        file_name = wx.TextCtrl(self.pnlA, id=130, name="New filename", value="New spreadsheet name")
+        file_name.SetMinSize(wx.Size(400, 25))
+        placeholder = "Spreadsheet ID"
+        if self.GetParent().sheet_id is not None:
+            placeholder = self.GetParent().sheet_id
+        sheet_ID = wx.TextCtrl(self.pnlA, id=131, name="Spreadsheet ID", value=placeholder)
+        sheet_ID.SetMinSize(wx.Size(400, 25))
 
-
-        file_name = wx.TextCtrl(self.pnlA,id=130,name="New filename",value="New sheet name")
-
-        sheet_ID = wx.TextCtrl(self.pnlA,id=131, name="Sheet ID", value="Sheet ID")
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlA.sizer.Add(header_area_message, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
-        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                          label="To export to new sheet enter new sheet name:"),
+                                          label="Enter new spreadsheet name:"),
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-        self.pnlA.sizer.Add(file_name, wx.SizerFlags().Expand().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(file_name, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-        self.pnlA.sizer.Add(wx.Button(self.pnlA,id=110,label="Export to new file using new sheet name"), wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
-        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+
+        self.pnlA.sizer.Add(
+            wx.Button(self.pnlA, id=110, label="Create new spreadsheet (&& automatically get the ID put in box below)"),
+            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        existing_spreadsheets = drive.search_file()
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                          label="To export to existing sheet enter sheetID. Example: if URL was\n https://docs.google.com/spreadsheets/d/1-ABC123def/edit#gid=0\nthen 1-ABC123def would be ID to enter below:"),
+                                          label="Existing spreadsheets - tick checkbox to export to that sheet:"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        for k in existing_spreadsheets:
+            self.pnlA.sizer.Add(wx.CheckBox(self.pnlA, label=existing_spreadsheets[k], name=k),
+                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        valid_ID_text = wx.StaticText(self.pnlA,
+                                      label="Valid alphanumeric spreadsheet ID needed in box below")
+        font = valid_ID_text.GetFont()
+        font = font.Bold()
+        font.PointSize += 1
+        valid_ID_text.SetFont(font)
+        self.pnlA.sizer.Add(valid_ID_text,
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-        self.pnlA.sizer.Add(sheet_ID, wx.SizerFlags().Expand().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(sheet_ID, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-        self.pnlA.sizer.Add(wx.Button(self.pnlA,id=111, label="Export to existing sheet using sheet ID"),
+        """self.pnlA.sizer.Add(wx.Button(self.pnlA,id=111, label="Export to existing sheet using spreadsheet ID"),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))"""
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        self.sheet_name = None
+        sheet_name_button_text = f"Choose/create sheet in spreadsheet with above ID && export data to it"
+        self.pnlA.sizer.Add(wx.Button(self.pnlA, id=200, label=sheet_name_button_text),
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+
+        manualID_text = "For completeness: one can get ID manually to copy && paste in above\n by looking at Google Sheets URL e.g. if URL was\n"
+        manualID_text += "https://docs.google.com/spreadsheets/d/1-ABC123def/edit#gid=0\n"
+        manualID_text += "then 1-ABC123def would be ID (in reality ID would be longer & more random\n"
+        manualID_text += "but ID is between the /d/ and the /edit# in URL)\n"
+        self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
+                                          label=manualID_text),
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+        exclusion_text = wx.StaticText(self.pnlA,
+                                       label="Check the box for any items below you do NOT want exporting\nfor whatever reason (relevancy, accuracy,privacy etc),\nDEFAULT IS TO EXPORT ALL ITEMS UNCHECKED.")
+        font = exclusion_text.GetFont()
+        font = font.Bold()
+        font.PointSize += 1
+        exclusion_text.SetFont(font)
+        self.pnlA.sizer.Add(exclusion_text,
+                            wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+        self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+        for i in range(0, len(self.data)):
+            labeltext = ''
+            for f in self.data[i]:
+                if f is not None:
+                    labeltext += f'{f},\n'
+            self.pnlA.sizer.Add(wx.CheckBox(self.pnlA, id=1000 + i, label=labeltext, name="Data"),
+                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+
+        # Deal with sizers & sizing
         self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer)])
         self.set_sizers()
         self.SetSize(wx.Size(600, 600))
 
-        self.Bind(wx.EVT_BUTTON,self.OnEVTButton)
+        self.excluded_IDs = []
+        self.sheet_name = None
+
+        self.Bind(wx.EVT_BUTTON, self.OnEVTButton)
+        self.Bind(wx.EVT_CHECKBOX, self.OnEVTCheckbox)
+        self.Bind(wx.EVT_TEXT, self.OnEVTText)
 
     def set_sizers(self):
         """Create a panel and add to panels property - helps with repetitive layout task"""
@@ -152,17 +320,49 @@ class SheetsDialogue(wx.Frame):
             pnl, sizer = item
             pnl.SetSizer(sizer)
 
-    def OnEVTButton(self,event):
+    def get_non_excluded_data(self):
+        data = []
+        for i in range(0, len(self.data)):
+            if i not in self.excluded_IDs:
+                data.append(self.data[i])  #
+        return data
+
+    def OnEVTButton(self, event):
+        self.sheet_id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
+        data = self.get_non_excluded_data()
+
+        self.sheet_range = get_sheet_range(data)
         if event.GetEventObject().Id == 110:
-            title = wx.FindWindowById(130,self.pnlA).GetLineText(0).strip()
-            sheets.main(self.data,title=title,sheet_range=self.sheet_range)
+            title = wx.FindWindowById(130, self.pnlA).GetLineText(0).strip()
+            returned_id = sheets.main(data, title=title, sheet_range=self.sheet_range)
+            wx.FindWindowById(131, self.pnlA).SetValue(returned_id)
         if event.GetEventObject().Id == 111:
-            id = wx.FindWindowById(131,self.pnlA).GetLineText(0).strip()
-            print("ID as entered:",id)
-            sheets.main(self.data,sheet_id=id,sheet_range=self.sheet_range)
+            id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
+            if self.sheet_name is not None:
+                self.sheet_range = "'" + self.sheet_name + "'" + "!" + self.sheet_range
+            sheets.main(data, sheet_id=id, sheet_range=self.sheet_range)
+        if event.GetEventObject().Id == 200:
+            SheetPopup(self, size=wx.Size(600, 600), title='Sheet name popup', ).Show()
 
+    def OnEVTText(self, event):
+        # if text box changes remember sheet name
+        if event.GetEventObject().Id == 131:
+            id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
+            if self.GetParent().sheet_id != id:
+                self.GetParent().sheet_id = id
 
-
+    def OnEVTCheckbox(self, event):
+        if event.GetEventObject().GetName() == "Data":
+            id = event.GetEventObject().Id - 1000
+            if event.GetEventObject().Value is True:
+                self.excluded_IDs.append(id)
+            if event.GetEventObject().Value is False:
+                self.excluded_IDs.remove(id)
+        elif event.GetEventObject().GetName() != "Data":
+            if event.GetEventObject().Value is True:
+                wx.FindWindowById(131, self.pnlA).SetValue(event.GetEventObject().GetName())
+            else:
+                wx.FindWindowById(131, self.pnlA).SetValue("Spreadsheet ID")
 
 
 class MainFrame(wx.Frame):
@@ -176,9 +376,10 @@ class MainFrame(wx.Frame):
 
         # create set of of tags - used to determine if more than one box ticked
         self.tags = set()
+        self.db = db_util(None)
         self.margin = 20
         self.multitag_added = False  # to check that multitags have not already been added.
-
+        self.sheet_id = None  # use by Google Sheets export to retrain existing sheet between closing and opening.
         # create a panel in the frame
         # show scroll bars
         self.pnl = wx.ScrolledWindow(self, wx.ID_ANY, name="Main pnl Panel as labelled", size=wx.Size(600, 600))
@@ -236,7 +437,7 @@ class MainFrame(wx.Frame):
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.25)))
         field_format_box = wx.Choice(self.pnlA, id=100, choices=[k for k in field_orders],
-                                      name="Info format")
+                                     name="Info format")
         self.pnlA.sizer.Add(field_format_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.25)))
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
@@ -244,7 +445,7 @@ class MainFrame(wx.Frame):
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         export_mechanism_box = wx.Choice(self.pnlA, id=101, choices=[k for k in export_mechanisms],
-                                      name="Export mechanism")
+                                         name="Export mechanism")
         self.pnlA.sizer.Add(export_mechanism_box, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
                                           label="N.B. export via Google Sheets requires configuration - see help file"),
@@ -316,20 +517,20 @@ class MainFrame(wx.Frame):
         self.SetSize(wx.Size(width, height + 1))
         panel.Layout()
 
-    def data_formatter(self,data_piece, output_format):
+    def data_formatter(self, data_piece, output_format):
         output_list = []
         for item in output_format:
             if type(item) == int:
                 output_list.append(data_piece[item])
             elif repr(type(item)) == "<class 'function'>" and item.__name__ == 'html_link':
-                if self.export_choice == "Export to Google Sheets":
+                if self.export_choice == "Export to Google Sheets - read help re: configuration":
                     output_list.append(sheets_link(data_piece))
                 # if item is a function call it on the data (tuple etc) and add result to output
-                elif self.export_choice != "Export to Google Sheets":
+                elif self.export_choice != "Export to Google Sheets - read help re: configuration":
                     output_list.append(item(data_piece))
         return tuple(output_list)
 
-    def format_the_data(self,data, output_order):
+    def format_the_data(self, data, output_order):
         return_list = []
         for d in data:
             return_list.append(self.data_formatter(d, output_format=output_order))
@@ -373,11 +574,13 @@ class MainFrame(wx.Frame):
         # log_main.debug(f"star: {time.time()}")
         if is_dual_tag is False:
             # print("unformatted", self.db.urls_from_tagID(tagID))
-            urls_titles = self.format_the_data(self.db.urls_from_tagID(tagID),field_orders[self.order_choice]["output_order"])
+            urls_titles = self.format_the_data(self.db.urls_from_tagID(tagID),
+                                               field_orders[self.order_choice]["output_order"])
             # print("formatted as urls_titles", urls_titles,len(urls_titles),"data format length",len(field_orders[self.order_choice]["output_order"]))
             # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
         if is_dual_tag is True:
-            urls_titles = self.format_the_data(self.db.urls_from_combinedtagname(title, self.multitag_links_dict),field_orders[self.order_choice]["output_order"])
+            urls_titles = self.format_the_data(self.db.urls_from_combinedtagname(title, self.multitag_links_dict),
+                                               field_orders[self.order_choice]["output_order"])
             title = title.replace("&&", "&")
             # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
@@ -390,12 +593,15 @@ class MainFrame(wx.Frame):
             # format the data
             # open a window with data
             # either open a new sheet or receive ID of existing sheet
-            #if os.path.exists("credentials.json") is not True or os.path.isfile("credentials.json") is not True :
-             #   wx.MessageBox(f'Read help file regarding necessary configuration\nfor export to Google Sheets\nThe necessary credentials.json file is not in the same directory as the tool\nor is not a file')
-            #if os.path.exists("credentials.json") is True and os.path.isfile("credentials.json") is True:
-            SheetsDialogue(None, size=wx.Size(600, 600), title='Export to to Sheets',data=urls_titles).Show()
+            if os.path.exists("credentials.json") is not True or os.path.isfile("credentials.json") is not True:
+                wx.MessageBox(
+                    f'Read help file regarding \nnecessary configuration for\n export to Google Sheets\nIf you think credentials.json and\n token.json are present see if deleting both \nand redownloading credentials.json \nprompts successful browser-based authentication.',
+                    caption="Need to configure for export to Google Sheets")
+            if os.path.exists("credentials.json") is True and os.path.isfile("credentials.json") is True:
+                SheetsDialogue(self, size=wx.Size(600, 600), pos=wx.Point(x_pos + width, y_pos),
+                               title='Export to Sheets', data=urls_titles).Show()
 
-        elif export_choice == csv_choice :
+        elif export_choice == csv_choice:
             csv_file_dialog(urls_titles)
 
     def OnEVTChoice(self, event):
@@ -544,29 +750,11 @@ class MainFrame(wx.Frame):
         x_pos, y_pos = self.GetPosition()
         width, height = self.GetSize()
         title = "Tagged bookmarks export tool - Help"
-        html_text = f'<html><head><title>{title}</title><style></style></head><body>\
-        <h1>Help</h1>\
-        <h2>Workflow</h2>\
-        <ol>\
-        <li><p>Find places.sqlite from your Firefox browser profile (see <a href="https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data">https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data</a>)</p></li>\
-        <li><p>Open it with this tool via File &gt; Open in menu</p></li>\
-        <li><p>Check checkbox by tag name to show bookmarks with that tag.</p></li>\
-        <li><p>In window that appears: click on the links to visit link in default browser or click "Save as HTML file" link to export window contents as HTML</p></li>\
-        <li><p>Use "Append categories for items tagged with 2 tags" checkbox before or after file opening to have shown after single tag checkboxes the checkboxes for those tagged with at least two (e.g. tag A & tag B). Use of window that appears is same as for single tag bookmarks.</p></li>\
-        </ol>\
-        <h2>Rationale</h2>\
-        <p>Firefox browser exports bookmarks as a single HTML file with folders as the organising principle. In Firefox browser you can tag bookmarks in addition to choosing a folder location - and exporting by tag offers more flexibility to export just some of your bookmarks - including those with the same tag but in different folders.</p>\
-        <h2>Example</h2>\
-        <p>As an example of utility of using tags and this tool: suppose you bookmark pages about books for 3 reasons: 1) you want to read them yourself, 2) you are research the book as present for another person 3) you used or researched the book as a source for something you wrote such as a thesis. In all cases you could put them in an appropriate folder - but without tags you could not export all three combined. With tags: a common tag of e.g. "book" would allow export of a single list with all bookmarks tagged "book" regardless of folder, using two tags e.g. "book" as the common tag and a specific tag e.g. "to_buy", "for_mom", "thesis" (related to oneself, or books for one\'s mom, or one\'s thesis as appropriate) would - using the two tag combo option of this tool - allow you export a list of just the bookmarks labelled, in this example, "book" and "thesis" - showing only those bookmarks you marked as books related to your thesis.</p>\
-        <h2>Why is this not relevant to other browsers?</h2>\
-        <p>Besides the issue of Firefox browser specific bookmarks database structure: others (such as Chrome browser or Safari browser) do not seem to use tags (as at spring 2024) and they export as 1 HTML file organised by folder - the same as current default for bookmarks HTML export from Firefox browser. If one only organises one\'s bookmarks by folder then editing the HTML file exported by your browser is enough to produce a file only of the desired bookmarks. Hence this tool only serves a purpose for tagged bookmarks from Firefox browser.</p>\
-        <h2>Trademark acknowledgements</h2>\
-        <p>Firefox is a trademark of the Mozilla Foundation\n in the U.S. and other countries. Safari is a trademark of Apple Inc. Chrome is a trademark of Google LLC.</p>\
-        </body></html>'
+
 
         helpframe = wx.Frame(self, size=wx.Size(600, 600), )
-        myHtmlFrame(helpframe, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
-            html_text).Show()
+        myHtmlFrame(helpframe, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).LoadFile(
+            "help.html").Show()
 
 
 class myHtmlFrame(wx.Frame):
@@ -593,7 +781,9 @@ class myHtmlFrame(wx.Frame):
         self.html_win.SetPage(self.source)
         # log_main.debug(f"end: {time.time()}")
         return self
-
+    def LoadFile(self,*args):
+        self.html_win.LoadFile(args[0])
+        return self
     def OnTextCopy(self, event):
         text = self.html_win.SelectionToText()
         # from random import randint # random int to log event fired

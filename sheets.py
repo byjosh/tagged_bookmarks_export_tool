@@ -12,7 +12,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 # The ID and range of a sample spreadsheet.
 #SAMPLE_SPREADSHEET_ID = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
@@ -24,8 +24,9 @@ and in the sidebar for https://developers.google.com/sheets/api/quickstart/pytho
 To use this 3 things need to be done at https://console.cloud.google.com/apis/dashboard under the APIs and Service part
 1. Set up OAuth authentication screen and add yourself (and anyone you want to use the tool) as a test user
 2. Create and download OAuth 2.0 Client ID and save this in the same folder as this file as credentials.json
-3. Under Enabled APIs search for Google Sheets and enable that
-As this app is not read only the scope of "https://www.googleapis.com/auth/spreadsheets" is needed and that is sensitive (as well as creating sheets it can read, edit, delete all your account's spreadsheets)
+3. Under Enabled APIs search for Google Sheets and Google Drive and enable those
+As this app is not read only the scope of "https://www.googleapis.com/auth/drive.file" that is non-sensitive and fortunately sufficient 
+(first as well as creating sheets it can read, edit, delete all your account's spreadsheets, second can access and alter/delete your files on Google Drive)
 As the app uses a sensitive scope to enable its use in general without being added as a test user as above
 would need the app to go through verification outlined here https://support.google.com/cloud/answer/13463073
 The spreadsheet ID needed in this code can be found in the web interface by going to the sheet and 
@@ -56,6 +57,96 @@ def rearrange_fields_for_output(data,dataorder,outputorder):
 
 def test(a: int, b: int) -> int:
     pass
+
+def set_sheet_name(spreadsheet_ID,sheet_name):
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+          flow = InstalledAppFlow.from_client_secrets_file(
+              "credentials.json", SCOPES
+          )
+          creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open("token.json", "w") as token:
+          token.write(creds.to_json())
+
+    try:
+
+        service = build("sheets", "v4", credentials=creds)
+        body = {
+            "requests": [
+
+                {'addSheet': {'properties': {'title': 'Amazing new sheet'}}}
+
+            ],
+            "includeSpreadsheetInResponse": False,
+            "responseRanges": [
+                "A1:Z10"
+            ],
+            "responseIncludeGridData": False
+        }
+        body['requests'][0]['addSheet']['properties']['title'] = sheet_name
+        result = (
+            service.spreadsheets()
+            .batchUpdate(
+                spreadsheetId=spreadsheet_ID,
+                body=body,
+            )
+            .execute()
+        )
+
+
+        return sheet_name
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return error
+
+def get_sheet_names(spreadsheet_ID):
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+          flow = InstalledAppFlow.from_client_secrets_file(
+              "credentials.json", SCOPES
+          )
+          creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open("token.json", "w") as token:
+          token.write(creds.to_json())
+
+    try:
+
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+        result = (
+        sheet.get(spreadsheetId=spreadsheet_ID)
+        .execute()
+        )
+
+        titles = []
+        for k in result['sheets']:
+            titles.append(k['properties']['title'])
+
+        #print(f"Spreadsheet titles: {titles}")
+        return titles
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return error
 
 def main(data,**kwargs):
   """mode,datadict
@@ -161,6 +252,7 @@ def main(data,**kwargs):
         sheetID = kwargs["sheet_id"]
     if "sheet_id" not in kwargs and "title" in kwargs:
         sheetID = create(kwargs["title"])
+        return sheetID
     range_name = kwargs["sheet_range"]
     update_values(sheetID, range_name,"USER_ENTERED",data,)
     # Call the Sheets API
@@ -181,9 +273,11 @@ def main(data,**kwargs):
     for row in values:
       # Print columns A and E, which correspond to indices 0 and 4.
       print(f"{row}")
+
   except HttpError as err:
     print(err)
 
 
 if __name__ == "__main__":
-  main()
+  #main()
+  get_sheet_names("1LfZqq_G0QlwZwx0kTyzahaIiuQEfrUlFynt6QWvmCs0")
