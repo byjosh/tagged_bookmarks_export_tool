@@ -11,10 +11,18 @@
         <ol>
         <li><p>Find places.sqlite from your Firefox browser profile (see <a href="https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data">https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data</a>)</p></li>
         <li><p>Open it with this tool via File &gt; Open in menu</p></li>
+        <li><p>Choose in "Field format" dropdown what fields you want (default is HTML links)</p></li>
+        <li><p>Make a choice in the "Export format" dropdown choosing if you want to view the bookmarks & export HTML, save to a CSV file, or export to Google Sheets (see help on configuration re: Google Sheets below).</p></li>
         <li><p>Check checkbox by tag name to show bookmarks with that tag.</p></li>
-        <li><p>In window that appears: click on the links to visit link in default browser or click "Save as HTML file" link to export window contents as HTML</p></li>
-        <li><p>Use "Append categories for items tagged with 2 tags" checkbox before or after file opening to have shown after single tag checkboxes the checkboxes for those tagged with at least two (e.g. tag A & tag B). Use of window that appears is same as for single tag bookmarks.</p></li>
-        </ol>
+        <li><p>Use "Append categories for items tagged with 2 tags" checkbox before or after file opening to have shown after single tag checkboxes the checkboxes for those tagged with at least two (e.g. tag A & tag B). Use of window that appears is same as for single tag bookmarks.</p></li></ol>
+        <h3>Options in HTML window</h3>
+
+        <ul>
+        <li><p> click on the links to visit link in default browser</p> </li>
+                <li><p>click "Save as HTML file" link to export window contents as HTML</p></li>
+                <li><p>copy plain text to clipboard via mouse &amp; keyboard</p></li>
+                <li><p>copy all bookmarks as HTML to clipboard via clicking link in window present for that purpose</p></li>
+        </ul>
         <h2>Necessary configuration for export to Google Sheets</h2>
         <p>Export to a Google Sheet is possible if you are willing to authorise this as a test app.</p>
         <p>As the necessary permissions to Export to a Google Sheet necessarily expose all your files in Google Drive to this program this is only suitable if </p><ul><li>you understand Python enough to examine the program and be reasonably sure it is not malicious</li><li>or you obtained this from ,<a href="https://github.com/byjosh/tagged_bookmarks_export_tool/">https://github.com/byjosh/tagged_bookmarks_export_tool/</a> directly AND trust me AND trust I have not been hacked</li><li>or you obtained it from someone else you know and trust to both be competent assessing Python and non-malicious</li><li>you are are running it in a situation where neither the computer you are running it on nor the account being accessed matters greatly if this was malicious/hacked - e.g. on a laptop with no personal files on it, inside a virtual machine and accessing throw-away account with no personal data in it</li></ul>
@@ -27,8 +35,17 @@
         see <a href="https://developers.google.com/drive/api/guides/api-specific-auth">https://developers.google.com/drive/api/guides/api-specific-auth</a>.
         To enable its use without being added as a test user would need the app to be published and possibly to go through verification outlined here https://support.google.com/cloud/answer/13463073 . </p>
         <h2>Spreadsheet IDs</h2>
-        <p>The spreadsheet ID needed to identify a Google Sheets spreadsheet can A) handle by the app (if you create or use an existing spreadsheet) or B) be found Google Sheets in the web interface by going to the sheet and after the final forward slash in https://docs.google.com/spreadsheets/d/ everything before the next forward slash is the ID.  So if the URL was https://docs.google.com/spreadsheets/d/1-ABC123def/edit#gid=0 then 1-ABC123def would be the ID in reality the ID will be much longer and more random</p>
-        <h2>Rationale</h2>
+        <p>The spreadsheet ID needed to identify a Google Sheets spreadsheet is shown to the user (to aid</p>
+        <h3>Spreadsheet ID is not editable in app - should it be?</h3>
+        <p>If one added the scope <em>"https://www.googleapis.com/auth/spreadsheets"</em> to the app
+        &amp; made spreadsheet ID box editable one could get ID manually to copy &amp; paste in an ID
+        by looking at Google Sheets spreadsheet URL. However using only the scope of <em>"https://www.googleapis.com/auth/drive.file"</em>
+        makes app more secure by conforming to principle of least privilege
+        (here: only allowing it access to spreadsheets created by app - not all one's spreadsheets).</p>
+        <h3>How do I see the spreadsheet ID from a URL</h3>
+        <p>For example: if Google Sheets spreadsheet URL was https://docs.google.com/spreadsheets/d/1-ABC123def/edit#gid=0
+        then <em>1-ABC123def</em> would be ID (in reality ID would be longer & more random but ID is between the /d/ and the /edit# in URL). The ID can allow you to tell the difference between two spreadsheets that might otherwise have the same names</p>
+        <h2>Rationale for this app</h2>
         <p>Firefox browser exports bookmarks as a single HTML file with folders as the organising principle. In Firefox browser you can tag bookmarks in addition to choosing a folder location - and exporting by tag offers more flexibility to export just some of your bookmarks - including those with the same tag but in different folders.</p>
         <h2>Example</h2>
         <p>As an example of utility of using tags and this tool: suppose you bookmark pages about books for 3 reasons: 1) you want to read them yourself, 2) you are research the book as present for another person 3) you used or researched the book as a source for something you wrote such as a thesis. In all cases you could put them in an appropriate folder - but without tags you could not export all three combined. With tags: a common tag of e.g. "book" would allow export of a single list with all bookmarks tagged "book" regardless of folder, using two tags e.g. "book" as the common tag and a specific tag e.g. "to_buy", "for_mom", "thesis" (related to oneself, or books for one's mom, or one's thesis as appropriate) would - using the two tag combo option of this tool - allow you export a list of just the bookmarks labelled, in this example, "book" and "thesis" - showing only those bookmarks you marked as books related to your thesis.</p>

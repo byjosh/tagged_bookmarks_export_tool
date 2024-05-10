@@ -31,8 +31,11 @@ class db_util:
         :type file_path: str
         """
         self.file_path = None
+        if file_path is None:
+            return
         if os.path.exists(file_path) is True and os.path.isfile(file_path) is True:
             self.file_path = file_path
+
         else:
             print("Not a valid file selected - try another using specify_file_path(file_path='new_file_path')")
 

@@ -53,7 +53,7 @@ def search_file():
           .list(
               q="mimeType='application/vnd.google-apps.spreadsheet' and trashed = False",
               spaces="drive",
-              fields="nextPageToken, files(id, name)",
+              fields="nextPageToken, files(id, name,createdTime)",
               pageToken=page_token,
           )
           .execute()
@@ -70,7 +70,7 @@ def search_file():
     print(f"An error occurred: {error}")
     files = None
 
-  return {file['id']:file['name'] for file in files}
+  return {file['id']:(file['name'],file['createdTime']) for file in files}
 
 
 if __name__ == "__main__":

@@ -198,7 +198,7 @@ def main(data,**kwargs):
               .create(body=spreadsheet, fields="spreadsheetId")
               .execute()
           )
-          print(f"Spreadsheet ID: {(spreadsheet.get('spreadsheetId'))}")
+          #print(f"Spreadsheet ID: {(spreadsheet.get('spreadsheetId'))}")
           return spreadsheet.get("spreadsheetId")
       except HttpError as error:
           print(f"An error occurred: {error}")
@@ -234,7 +234,7 @@ def main(data,**kwargs):
               )
               .execute()
           )
-          print(f"{result.get('updatedCells')} cells updated.")
+          #print(f"{result.get('updatedCells')} cells updated.")
           return result
       except HttpError as error:
           print(f"An error occurred: {error}")
@@ -269,10 +269,10 @@ def main(data,**kwargs):
       print("No data found.")
       return
 
-    print("Result:- ",result)
+    """print("Result:- ",result)
     for row in values:
       # Print columns A and E, which correspond to indices 0 and 4.
-      print(f"{row}")
+      print(f"{row}")"""
 
   except HttpError as err:
     print(err)
