@@ -51,11 +51,11 @@ would be top of list.
 For now just grateful that thanks to Python and wxPython & wxWidgets a cross platform GUI in a nice, native style seems not too much work.
 
 ## Licensing
-This relies on [wxPython](https://wxpython.org/) and GPLv2 is very compatible with [the wxPython license](https://wxpython.org/pages/license/) (which seems to be GPLv2 with an exception to allow binaries to be distributed on any terms. So licensing my source here under GPLv2 seemed the easy choice.
+This relies on [wxPython](https://wxpython.org/) and GPLv2 is very compatible with [the wxPython license](https://wxpython.org/pages/license/) (which seems to be GPLv2 with an exception to allow binaries to be distributed on any terms. So licensing my source here under GPLv2 seemed the easy choice. The text of Apache License Version 2.0 is included as that was the license for some code samples used as basis for implementing export to Google Sheets (noted in appropriate files) - while project license is in the <code>LICENSE</code> file.
 
 ## Use
 From the help file
-<h2>Workflow</h2>
+        <h2>Workflow</h2>
         <ol>
         <li><p>Find places.sqlite from your Firefox browser profile (see <a href="https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data">https://support.mozilla.org/en-US/kb/profiles-where-firefox-stores-user-data</a>)</p></li>
         <li><p>Open it with this tool via File &gt; Open in menu</p></li>
@@ -76,9 +76,9 @@ From the help file
         <p>Assuming it is sensible to trust this program with limited access to your Google account 3 things need to be done at <a href="https://console.cloud.google.com/apis/dashboard">https://console.cloud.google.com/apis/dashboard</a> under the APIs and Service part </p><ol>
         <li> Under "OAuth consent screen" and add yourself (and anyone you want to use the tool) as a test user</li>
         <li> Under "Enabled APIs &amp; services" search for Google Drive and enable that</li>
-        <li> Under "Credentials": create and download OAuth 2.0 Client ID and save this in the same folder as main Python file as credentials.json</li>
+        <li> Under "Credentials": create and download OAuth 2.0 Client ID and save this in the same folder as main Python file as <code>credentials.json</code></li>
         </ol>
-        <p>With that configuration done when you tick the checkbox for a tag with "Export to Google Sheets" as selected export mechanism for first time that should lead to web browser based authentication prompt.</p>
+        <p>With that configuration done when you tick the checkbox for a tag with "Export to Google Sheets" as selected export mechanism for first time that should lead to web browser based authentication prompt. After successful configuration and authentication you should have two additional files present in the folder <code>credentials.json</code> and <code>token.json</code>(the former downloaded, second created by successful authentication process)</p>
         <p>As this app is not read only the scope of "https://www.googleapis.com/auth/drive.file" is needed and is non-sensitive
         see <a href="https://developers.google.com/drive/api/guides/api-specific-auth">https://developers.google.com/drive/api/guides/api-specific-auth</a>. Once configured and you have gone through browser based authentication you will need to create a spreadsheet using the app - as if "https://www.googleapis.com/auth/drive.file" is the only scope one cannot access spreadsheets created through web interface of Google Sheets. </p>
         <p>To enable its use without being added as a test user would need the app to be published and possibly to go through verification outlined here https://support.google.com/cloud/answer/13463073 . </p>
@@ -108,4 +108,3 @@ From the help file
         <p>Besides the issue of Firefox browser specific bookmarks database structure: others (such as Chrome browser or Safari browser) do not seem to use tags (as at spring 2024) and they export as 1 HTML file organised by folder - the same as current default for bookmarks HTML export from Firefox browser. If one only organises one's bookmarks by folder then editing the HTML file exported by your browser is enough to produce a file only of the desired bookmarks. Hence this tool only serves a purpose for tagged bookmarks from Firefox browser.</p>
         <h2>Trademark acknowledgements</h2>
         <p>Firefox is a trademark of the Mozilla Foundation in the U.S. and other countries. Safari is a trademark of Apple Inc. Chrome, Google Drive, and Google Sheets are trademarks of Google LLC.</p>
-        
