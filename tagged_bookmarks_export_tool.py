@@ -130,26 +130,30 @@ class ChooseSheet(CommonSheet):
         # ensure the parent's __init__ is called
         super(ChooseSheet, self).__init__(*args, **kw)
 
-        self.id = wx.FindWindowById(131, self.GetParent().pnlA).GetLineText(0).strip()
+        self.id = wx.FindWindowById(self.GetParent().frame_ids["txtbox current ID"], self.GetParent().pnlA).GetLineText(0).strip()
 
-        if self.GetParent().sheet_id == "" or self.GetParent().sheet_id == "Spreadsheet ID":
+        if self.GetParent().selected_sheet_id == "" or self.GetParent().selected_sheet_id == "Select/create spreadsheet above to replace this text with an ID":
             wx.MessageBox(
                 "A spreadsheet has not been specified by ID - create a spreadsheet or selected an existing spreadsheet (if shown) first - an ID will appear in box (not user editable) when selected/created",caption="Spreadsheet not selected/created")
             self.Close()
-        elif self.GetParent().sheet_id != "" and self.GetParent().sheet_id != "Spreadsheet ID":
-            self.sheet_names = changespreadsheets.get_sheet_names(self.GetParent().sheet_id)
+        elif self.GetParent().selected_sheet_id != "" and self.GetParent().selected_sheet_id != "Select/create spreadsheet above to replace this text with an ID":
+            # above shows a spreadsheet has been selected - now to get sheet names
+            current_spreadsheet_name = self.GetParent().existing_spreadsheets[self.GetParent().selected_sheet_id][0]
+            self.sheet_names = changespreadsheets.get_sheet_names(self.GetParent().selected_sheet_id)
             self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-            main_text = f"N.B. Default in this window is clicking a button exports\nto spreadsheet with ID {self.id}\n\nTo exit WITHOUT exporting:\nclose window without clicking a button.\n\nButtons before the textbox below are existing sheet names\nclicking a button exports to that sheet"
+            main_text = f'\nButtons before the textbox below are existing sheet names\nclicking a button exports to that sheet \nin spreadsheet "{current_spreadsheet_name}"'
             self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
                                               label=main_text),
                                 wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
             self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+
+            # add existing sheet names
             for sheet in self.sheet_names:
                 self.pnlA.sizer.Add(wx.Button(self.pnlA, label=sheet.replace("&", "&&")),
                                     wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
                 self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
 
-            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 1)))
+            # Create new sheet
             self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
                                               label="Enter new sheet name in textbox below\n(tag(s) prefilled as a suggested sheet name)"),
                                 wx.SizerFlags().Border(wx.LEFT, int(self.margin * 2)))
@@ -161,9 +165,8 @@ class ChooseSheet(CommonSheet):
             self.pnlA.sizer.Add(
                 wx.Button(self.pnlA, id=300, label="Create sheet using name in textbox above && export to it"),
                 wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
-            self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                              label=f'Clicking button above will create sheet && export to it\nin spreadsheet with ID {self.id}\n\n'),
-                                wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
+            self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
+            self.pnlA.sizer.Add(wx.StaticText(self.pnlA,label=f'N.B. Default in this window is clicking a button exports\nto spreadsheet "{current_spreadsheet_name}" \nwith ID of {self.id}\n\nData will be entered in range {self.GetParent().get_sheet_range(self.GetParent().get_non_excluded_data())} of chosen sheet \nwith {len(self.GetParent().data) - len(self.GetParent().get_non_excluded_data())} items excluded from export on previous screen\n\nTo exit WITHOUT exporting: close window without clicking a button.\n'),wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
 
         self.panels_sizers.extend([(self.pnl, self.sizer), (self.pnlA, self.pnlA.sizer)])
         self.set_sizers()
@@ -197,15 +200,17 @@ class ChooseSheet(CommonSheet):
             name = wx.FindWindowById(301, self.pnlA).GetLineText(0).strip().replace("''", "'")
             sheet_name_button_text = f"Choose sheet name/create sheet (current sheet = {name} )"
             if name in self.sheet_names:
-                message = f"The new sheet name you entered already exists in the spreadsheet with id {self.GetParent().sheet_id} - your options:\npick existing sheet\ntry different name\nor different spreadsheet?\n\nN.B. no data export as new sheet name already exists \n& thus conflicts with existing sheet"
+                message = f"The new sheet name you entered already exists in the spreadsheet with id {self.GetParent().selected_sheet_id} - your options:\npick existing sheet\ntry different name\nor different spreadsheet?\n\nN.B. no data export as new sheet name already exists \n& thus conflicts with existing sheet"
                 wx.MessageBox(message, parent=self)
             if name not in self.sheet_names:
-                self.GetParent().sheet_name = changespreadsheets.set_sheet_name(self.GetParent().sheet_id, name)
+                self.GetParent().sheet_name = changespreadsheets.set_sheet_name(self.GetParent().selected_sheet_id, name)
 
                 self.GetParent().sheet_range = "'" + name + "'" + "!" + self.GetParent().sheet_range
                 changespreadsheets.main(self.GetParent().get_non_excluded_data(), sheet_id=self.id,
                             sheet_range=self.GetParent().sheet_range)
+                # not currently used as parent window closed
                 wx.FindWindowById(200, self.GetParent().pnlA).SetLabel(sheet_name_button_text)
+
                 self.GetParent().set_sizers()
                 self.GetParent().SetSize(wx.Size(600, 601))
                 spreadsheet_dict = {k: self.GetParent().existing_spreadsheets[k] for k in
@@ -220,24 +225,24 @@ class ChooseSpreadsheet(CommonSheet):
     """Initial dialogue - choose or create a spreadsheet to save to - and select data"""
 
     def __init__(self, *args, **kw):
-        self.data = kw['data']
-        kw.pop("data")
-        self.sheet_range = self.get_sheet_range(self.data)
+
 
         # ensure the parent's __init__ is called
         super(ChooseSpreadsheet, self).__init__(*args, **kw)
-        header_text = "Export to Sheets:- \n"
-        header_text += "read help file for the info "
-        header_text += "regarding configuration.\n\n"
-        header_text += f'Data will be entered in range {self.sheet_range}\n\n'
-        header_text += "Get started:\n"
+
+        self.data = self.GetParent().urls_titles_data
+        self.sheet_range = self.get_sheet_range(self.data)
+
+        header_text = "Get started:\n"
         header_text += "create a new sheet or select an existing one\n"
         header_text += "(if there are existing sheets created with this tool)"
-
         header_area_message = wx.StaticText(self.pnlA, label=header_text)
+
         file_name = wx.TextCtrl(self.pnlA, id=130, name="New filename", value="New spreadsheet name")
         file_name.SetMinSize(wx.Size(400, 25))
-        placeholder_id = "Spreadsheet ID"
+
+        placeholder_id = "Select/create spreadsheet above to replace this text with an ID"
+        self.frame_ids = {"txtbox new spreadsheet": 130, "txtbox current ID": 131 ,"btn create spreadsheet":110, "btn choose/create sheet": 200 }
 
 
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
@@ -257,7 +262,7 @@ class ChooseSpreadsheet(CommonSheet):
         self.existing_spreadsheets = findfiles.search_file()
         if len(self.existing_spreadsheets) > 0:
             self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                              label="Existing spreadsheets - tick checkbox for its ID in box below - exporting to that sheet:"),
+                                              label="Existing spreadsheets tick to set as export destination && put ID in box below:"),
                                 wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
             for k in self.existing_spreadsheets:
                 self.pnlA.sizer.Add(wx.CheckBox(self.pnlA, label=self.existing_spreadsheets[k][0], name=k),
@@ -268,13 +273,14 @@ class ChooseSpreadsheet(CommonSheet):
                 self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         elif len(self.existing_spreadsheets) == 0:
             self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                              label="This tool can only export to spreadsheets created with it - none found so create one above"),
+                                              label="This tool can only export to spreadsheets created with it.\nNo spreadsheets created with this tool found - create one above\n"),
+
                                 wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
             self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
 
 
         valid_id_text = wx.StaticText(self.pnlA,
-                                      label="A spreadsheet ID (not user editable) appears below\nwhen you create or choose spreadsheet above\nonce you have ID below you can choose a sheet\n in spreadsheet && export")
+                                      label="When you create or choose spreadsheet above\nspreadsheet ID (not user editable) appears below")
         font = valid_id_text.GetFont()
         font = font.Bold()
         font.PointSize += 1
@@ -282,20 +288,20 @@ class ChooseSpreadsheet(CommonSheet):
         self.pnlA.sizer.Add(valid_id_text,
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
-
-        self.boxchecked = []
-        if self.GetParent().sheet_id is not None:
-            placeholder_id = self.GetParent().sheet_id
+        # is there a checbox related to spreadsheets checked
+        self.spreadsheet_box_checked = []
+        if self.GetParent().selected_sheet_id is not None:
+            placeholder_id = self.GetParent().selected_sheet_id
 
             window_found = wx.FindWindowByName(placeholder_id, self.pnlA)
             # need to check window is not None as sheets deleted between opening can mean a valid ID is not longer valid
             if window_found is not None and len(self.existing_spreadsheets) > 0:
                 window_found.SetValue(True)
                 # monitor if a box is ticked
-                self.boxchecked.append(placeholder_id)
+                self.spreadsheet_box_checked.append(placeholder_id)
         if placeholder_id not in self.existing_spreadsheets:
-            placeholder_id = ""
-        sheet_ID = wx.TextCtrl(self.pnlA, id=131,style=wx.TE_READONLY, name="Spreadsheet ID", value=placeholder_id)
+            placeholder_id = "Select/create spreadsheet above to replace this text with an ID"
+        sheet_ID = wx.TextCtrl(self.pnlA, id=self.frame_ids["txtbox current ID"],style=wx.TE_READONLY, name="Spreadsheet ID", value=placeholder_id)
         sheet_ID.SetMinSize(wx.Size(400, 25))
 
         self.pnlA.sizer.Add(sheet_ID, wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
@@ -318,7 +324,7 @@ class ChooseSpreadsheet(CommonSheet):
         exclusion_text.SetFont(font)
         self.pnlA.sizer.Add(exclusion_text,
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
-        additional_exclusion_text = wx.StaticText(self.pnlA,label="This is 'edit before sending (to Google servers)'\noption. If you should've used this option but didn't:\ndelete in Google Drive/Sheets and try again\nor make the edits there,on Google servers,\nthat you should have made here.")
+        additional_exclusion_text = wx.StaticText(self.pnlA,label="This is 'edit before sending (to Google servers)'\noption. If you should've used this option but didn't:\ndelete in Google Drive/Sheets and try again\nor make the edits there, on Google servers,\nthat you should have made here.")
         self.pnlA.sizer.Add(additional_exclusion_text,
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
@@ -335,7 +341,7 @@ class ChooseSpreadsheet(CommonSheet):
         self.set_sizers()
         self.SetSize(wx.Size(600, 600))
 
-        self.excluded_IDs = []
+        self.list_of_data_ids_to_exclude_from_export = []
         self.sheet_name = None
 
         self.Bind(wx.EVT_BUTTON, self.OnEVTButton)
@@ -345,23 +351,28 @@ class ChooseSpreadsheet(CommonSheet):
     def get_non_excluded_data(self):
         data = []
         for i in range(0, len(self.data)):
-            if i not in self.excluded_IDs:
+            if i not in self.list_of_data_ids_to_exclude_from_export:
                 data.append(self.data[i])  #
         return data
 
     def OnEVTButton(self, event):
         x_pos, y_pos = self.GetPosition()
 
-        self.sheet_id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
+        self.selected_sheet_id = wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).GetLineText(0).strip()
         data = self.get_non_excluded_data()
 
         self.sheet_range = self.get_sheet_range(data)
         if event.GetEventObject().Id == 110:
             self.title = wx.FindWindowById(130, self.pnlA).GetLineText(0).strip()
             returned_id = changespreadsheets.main(data, title=self.title, sheet_range=self.sheet_range)
-            wx.FindWindowById(131, self.pnlA).SetValue(returned_id)
+            from datetime import datetime
+            self.existing_spreadsheets[returned_id] = (self.title,datetime.isoformat(datetime.now()))
+            wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).SetValue(returned_id)
+            current_ticked_box = wx.FindWindowByName(self.selected_sheet_id,self.pnlA)
+            if current_ticked_box is not None:
+                current_ticked_box.SetValue(False)
         if event.GetEventObject().Id == 111:
-            id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
+            id = wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).GetLineText(0).strip()
             if self.sheet_name is not None:
                 self.sheet_range = "'" + self.sheet_name + "'" + "!" + self.sheet_range
             changespreadsheets.main(data, sheet_id=id, sheet_range=self.sheet_range)
@@ -369,42 +380,45 @@ class ChooseSpreadsheet(CommonSheet):
             ChooseSheet(self, size=wx.Size(600, 600), pos=wx.Point(x_pos, y_pos), title='Sheet name popup', ).Show()
 
     def OnEVTText(self, event):
-        # if text box changes remember sheet name
+        # if text box changes remember sheet name - no longer relevant if box is readonly
         if event.GetEventObject().Id == 131:
-            id = wx.FindWindowById(131, self.pnlA).GetLineText(0).strip()
-            if self.GetParent().sheet_id != id:
-                self.GetParent().sheet_id = id
+            id = wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).GetLineText(0).strip()
+            if self.GetParent().selected_sheet_id != id:
+                self.GetParent().selected_sheet_id = id
 
     def OnEVTCheckbox(self, event):
-        if event.GetEventObject().GetName() == "Data":
+        # TODO: this does not replace the current spreadsheets to reflect newly created ones
+        this_box = event.GetEventObject().GetName()
+        a_box_already_recorded_as_checked = len(self.spreadsheet_box_checked) > 0
+        this_box_checkstate = event.GetEventObject().Value
+        if this_box == "Data":
+            # add or remove ID of line of data from excluded ID list.
             id = event.GetEventObject().Id - 1000
-            if event.GetEventObject().Value is True:
-                self.excluded_IDs.append(id)
-            if event.GetEventObject().Value is False:
-                self.excluded_IDs.remove(id)
-        elif event.GetEventObject().GetName() != "Data":
-            #This is checked box we are unchecking and resetting
-            if event.GetEventObject().GetName() in self.boxchecked and event.GetEventObject().Value is False:
-                wx.FindWindowById(131, self.pnlA).SetValue("Spreadsheet ID")
-                self.boxchecked.remove(event.GetEventObject().GetName())
+            if this_box_checkstate is True:
+                self.list_of_data_ids_to_exclude_from_export.append(id)
+            if this_box_checkstate is False:
+                self.list_of_data_ids_to_exclude_from_export.remove(id)
+        elif this_box != "Data":
+            # event.GetEventObject().GetName() is spreadsheet ID for non-data checkboxes
+            # This is checked box we are unchecking
+            if this_box in self.spreadsheet_box_checked and this_box_checkstate is False:
+                wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).SetValue("Select/create spreadsheet above to replace this text with an ID")
+                self.spreadsheet_box_checked.remove(this_box)
 
             # the checked box is shown, we are checking another not one checked
-            elif len(self.boxchecked) > 0 and wx.FindWindowByName(self.boxchecked[0],self.pnlA) != None and event.GetEventObject().Value is True and event.GetEventObject().GetName() not in self.boxchecked:
+            elif a_box_already_recorded_as_checked and wx.FindWindowByName(self.spreadsheet_box_checked[0],self.pnlA) != None and this_box_checkstate is True and this_box not in self.spreadsheet_box_checked:
                 wx.MessageBox("Another sheet already selected - deselect that first then select one you want",caption="Conflict - deselect other box first")
                 event.GetEventObject().SetValue(False)
 
             # the checked box is NOT shown (so current ID is from making newsheet), we are checking another not one checked
-            elif (len(self.boxchecked) == 0) or (len(self.boxchecked) > 0 and wx.FindWindowByName(self.boxchecked[0],
-                                   self.pnlA) is None and event.GetEventObject().Value is True and event.GetEventObject().GetName() not in self.boxchecked):
-                if len(self.boxchecked) > 0:
-                    self.boxchecked.pop(0)
+            elif (len(self.spreadsheet_box_checked) == 0) or (a_box_already_recorded_as_checked and wx.FindWindowByName(self.spreadsheet_box_checked[0],
+                                   self.pnlA) is None and this_box_checkstate is True and this_box not in self.spreadsheet_box_checked):
+                if a_box_already_recorded_as_checked:
+                    self.spreadsheet_box_checked.pop(0)
 
-                self.boxchecked.append(event.GetEventObject().GetName())
+                self.spreadsheet_box_checked.append(this_box)
                 self.title = event.GetEventObject().GetLabel()
-                wx.FindWindowById(131, self.pnlA).SetValue(event.GetEventObject().GetName())
-
-
-
+                wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).SetValue(this_box)
 
 
 class MainFrame(wx.Frame):
@@ -421,7 +435,7 @@ class MainFrame(wx.Frame):
         self.db = db_util(None)
         self.margin = 20
         self.multitag_added = False  # to check that multitags have not already been added.
-        self.sheet_id = None  # use by Google Sheets export to retrain existing sheet between closing and opening.
+        self.selected_sheet_id = None  # use by Google Sheets export to retrain existing sheet between closing and opening.
         # create a panel in the frame
         # show scroll bars
         self.pnl = wx.ScrolledWindow(self, wx.ID_ANY, name="Main pnl Panel as labelled", size=wx.Size(600, 600))
@@ -604,7 +618,7 @@ class MainFrame(wx.Frame):
                 except IOError:
                     wx.LogError("Cannot save current data in file '%s'." % csvfile)
 
-        urls_titles = None
+        self.urls_titles_data = None
         for set_tuple in self.tags:
             tagID = set_tuple[0]
             title = set_tuple[1]
@@ -613,21 +627,21 @@ class MainFrame(wx.Frame):
         # log_main.debug(f"star: {time.time()}")
         if is_dual_tag is False:
             # print("unformatted", self.db.urls_from_tagID(tagID))
-            urls_titles = self.format_the_data(self.db.urls_from_tagID(tagID),
+            self.urls_titles_data = self.format_the_data(self.db.urls_from_tagID(tagID),
                                                field_orders[self.order_choice]["output_order"])
-            # print("formatted as urls_titles", urls_titles,len(urls_titles),"data format length",len(field_orders[self.order_choice]["output_order"]))
-            # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
+            # print("formatted as self.urls_titles_data", self.urls_titles_data,len(self.urls_titles_data),"data format length",len(field_orders[self.order_choice]["output_order"]))
+            # log_main.debug(f'dualtag= {is_dual_tag}, self.urls_titles_data = {self.urls_titles_data}')
         if is_dual_tag is True:
-            urls_titles = self.format_the_data(self.db.urls_from_combinedtagname(title, self.multitag_links_dict),
+            self.urls_titles_data = self.format_the_data(self.db.urls_from_combinedtagname(title, self.multitag_links_dict),
                                                field_orders[self.order_choice]["output_order"])
             title = title.replace("&&", "&")
-            # log_main.debug(f'dualtag= {is_dual_tag}, urls_titles = {urls_titles}')
+            # log_main.debug(f'dualtag= {is_dual_tag}, self.urls_titles_data = {self.urls_titles_data}')
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
 
         if export_choice == html_choice:
-            html_page_source = full_html(urls_titles, title)
+            html_page_source = full_html(self.urls_titles_data, title)
             myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
-                html_page_source, urls_titles).Show()
+                html_page_source, self.urls_titles_data).Show()
         elif export_choice == sheets_choice:
             # format the data
             # open a window with data
@@ -638,10 +652,10 @@ class MainFrame(wx.Frame):
                     caption="Need to configure for export to Google Sheets")
             if os.path.exists("credentials.json") is True and os.path.isfile("credentials.json") is True:
                 ChooseSpreadsheet(self, size=wx.Size(600, 600), pos=wx.Point(x_pos + width, y_pos),
-                                  title='Export to Sheets', data=urls_titles).Show()
+                                  title='Export to Sheets').Show()
 
         elif export_choice == csv_choice:
-            csv_file_dialog(urls_titles)
+            csv_file_dialog(self.urls_titles_data)
 
     def OnEVTChoice(self, event):
         export_mechanism_window = wx.FindWindowById(101, self.pnlA)
