@@ -489,7 +489,7 @@ class MainFrame(wx.Frame):
         self.pnlA.sizer.Add(self.multitag_check, wx.SizerFlags().Border(wx.LEFT, self.margin))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.5)))
         self.pnlA.sizer.Add(wx.StaticText(self.pnlA,
-                                          label="Field format:"),
+                                          label="Fields:"),
                             wx.SizerFlags().Border(wx.LEFT, self.margin * 2))
         self.pnlA.sizer.Add(1, 1, wx.SizerFlags().Border(wx.BOTTOM, int(self.margin * 0.25)))
         field_format_box = wx.Choice(self.pnlA, id=100, choices=[k for k in field_orders],
