@@ -743,12 +743,9 @@ class MainFrame(wx.Frame):
 
         # remove and add back the lower Panel B
         self.tags = set()
-        self.panels_sizers = self.panel_sizer_with_this_panel_removed(self.pnlB)
-        self.pnlB.Destroy()
-        self.pnlB = wx.Panel(self.pnl)
-        self.pnlB.sizer = wx.FlexGridSizer(cols=1)
-        self.panels_sizers.append((self.pnlB, self.pnlB.sizer))
-        self.sizer.Add(self.pnlB, wx.SizerFlags().Top().Expand())
+        # Clear items from panel B
+        self.pnlB.sizer.Clear(delete_windows=True)
+
         # log_main.debug(self.db.specify_file_path())
         if self.db.is_bookmarks_file():
             # append tags to lower Panel B
