@@ -53,6 +53,7 @@ class db_util:
             print("That was not a valid file you selected - about to return the previous file")
 
     def db_connect(self):
+        """Returns a connection using filepath specified when instantiating class"""
         global pathname
         conn = sqlite3.connect(self.specify_file_path())
         return conn
@@ -245,7 +246,7 @@ class db_util:
             # log_database.debug(f'Database query was: {db_query}')
             if self.db_connect().execute(db_query, (sanitised_name,)).fetchall() is not None:
                 # OK table exists as is - so use table name
-                return self.get_results(self.db_cursor(db_connect()), f"PRAGMA table_info({sanitised_name});")
+                return self.get_results(self.db_cursor(self.db_connect()), f"PRAGMA table_info({sanitised_name});")
         finally:
             print("Finally happened - an error?")
 
