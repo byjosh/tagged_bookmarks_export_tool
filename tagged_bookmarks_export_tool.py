@@ -10,7 +10,8 @@ from database_utils import db_util
 from html_utils import *
 import changespreadsheets
 import findfiles
-
+from datetime import datetime
+import html
 """import logging
 logging.basicConfig(level=logging.DEBUG)
 log_main = logging.getLogger(name="TBET MAIN")
@@ -20,7 +21,9 @@ Use find and replace in IDE to uncomment # from log_main calls - see comment in 
 """
 
 html_page_source = ""
-
+# TODO: this should really be better encapsulted in a report object.
+# Currently it is making accessible some tags settings that really should be managed by a set of object relations
+export_tags_obj = [""]
 
 def html_link(data):
     """
@@ -30,6 +33,11 @@ def html_link(data):
     :rtype: str
     """
     return f'<a href="{html.escape(data[1])}" > {html.escape(data[-1])}</a>'
+
+def bookmark_link(data):
+    export_tags = export_tags_obj[0]
+    # log_main.debug("-3,-4,-5",data[-3],data[-4],data[-5])
+    return f'<A HREF="{html.escape(data[1])}" ADD_DATE="{html.escape(str(int(datetime.fromisoformat(data[-3]).timestamp())))}" LAST_VISIT="{html.escape(str(int(datetime.fromisoformat(data[-5]).timestamp())))}" LAST_MODIFIED="{html.escape(str(int(datetime.fromisoformat(data[-4]).timestamp())))}" TAGS="{export_tags}">{html.escape(data[-1])}</A>'
 
 
 def sheets_link(data):
@@ -42,7 +50,9 @@ def sheets_link(data):
     return f'=HYPERLINK("{html.escape(data[1])}","{html.escape(data[-1])}")'
 
 
-field_orders = {"HTML links": {"output_order": (html_link,)},
+field_orders = {
+                "HTML links": {"output_order": (html_link,)},
+                "HTML links - as browser bookmarks file": {"output_order": (bookmark_link,)},
                 "HTML link, plaintext url": {"output_order": (html_link, 1)},
                 "HTML link, url, timestamp": {"output_order": (html_link, 1,-3)},
                 "HTML link, description,url, timestamp": {"output_order": (html_link, -2, 1, -3)},
@@ -365,7 +375,7 @@ class ChooseSpreadsheet(CommonSheet):
         if event.GetEventObject().Id == 110:
             self.title = wx.FindWindowById(130, self.pnlA).GetLineText(0).strip()
             returned_id = changespreadsheets.main(data, title=self.title, sheet_range=self.sheet_range)
-            from datetime import datetime
+            
             self.existing_spreadsheets[returned_id] = (self.title,datetime.isoformat(datetime.now()))
             wx.FindWindowById(self.frame_ids["txtbox current ID"], self.pnlA).SetValue(returned_id)
             current_ticked_box = wx.FindWindowByName(self.selected_sheet_id,self.pnlA)
@@ -572,10 +582,11 @@ class MainFrame(wx.Frame):
 
     def data_formatter(self, data_piece, output_format):
         output_list = []
+        export_tags_obj[0] = self.bookmark_export_tags
         for item in output_format:
             if isinstance(item,int):
                 output_list.append(data_piece[item])
-            elif repr(type(item)) == "<class 'function'>" and item.__name__ == 'html_link':
+            elif repr(type(item)) == "<class 'function'>" and (item.__name__ == 'html_link' or item.__name__ == 'bookmark_link'):
                 if self.export_choice == "Export to Google Sheets - read help re: configuration":
                     output_list.append(sheets_link(data_piece))
                 # if item is a function call it on the data (tuple etc.) and add result to output
@@ -622,6 +633,7 @@ class MainFrame(wx.Frame):
         for set_tuple in self.tags:
             tagID = set_tuple[0]
             title = set_tuple[1]
+            self.bookmark_export_tags = ",".join(title.split(" && "))
         # searching for && is checking for single tags
         is_dual_tag = [x for x in self.tags][0][1].find("&&") != -1
         # log_main.debug(f"star: {time.time()}")
@@ -639,9 +651,15 @@ class MainFrame(wx.Frame):
             # have HTML source in appropriate format - open in new window unless choice is to save to CSV directly
 
         if export_choice == html_choice:
-            html_page_source = full_html(self.urls_titles_data, title)
+            if self.order_choice == "HTML links - as browser bookmarks file":
+                self.link_style_key = "netscape_bookmark_format"
+            elif self.order_choice != "HTML links - as browser bookmarks file":
+                self.link_style_key = self.link_style_key = "standard_html"
+            
+            html_page_source = full_html(self.urls_titles_data, title,self.link_style_key)
             myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
                 html_page_source, self.urls_titles_data).Show()
+
         elif export_choice == sheets_choice:
             # format the data
             # open a window with data
@@ -821,7 +839,7 @@ class myHtmlFrame(wx.Frame):
         # bookmarks window - make links available in appropriate format for copying as well as page source
         if len(args) == 2:
             source, urls_titles = args
-            self.links = make_list_source_from_urls_titles(urls_titles)
+            self.links = make_list_source_from_urls_titles(urls_titles,self.GetParent().link_style_key)
             self.source = source
         self.html_win.SetPage(self.source)
         # log_main.debug(f"end: {time.time()}")
