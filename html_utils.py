@@ -26,7 +26,9 @@ def get_fragments_dict(**kw):
         tag_text = kw["tag_text"]
     if "urls_titles" in kw:
         urls_titles = kw["urls_titles"]
-   
+    # old current timestamp for fragments int(datetime.now().timestamp())
+    # 1st Jan 1990 timestamp used 631155661
+    # attributes no longer used for folded - ADD_DATE="{631155661}" LAST_MODIFIED="{631155661}"
     return {
     "standard_html":{
         "start": f'<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{tag_text.replace("&&", "&")} links</title></head><body><main><h1>{tag_text.replace("&&", "&")} links bookmarked</h1><p>number of links: {len(urls_titles)}</p>{instructional_text}',
@@ -40,21 +42,25 @@ def get_fragments_dict(**kw):
     },
     "netscape_bookmark_format":{
         "start":"""<!DOCTYPE NETSCAPE-Bookmark-file-1>
-<!-- This is an automatically generated file.
-     It will be read and overwritten.
-     DO NOT EDIT! -->
+<HTML>
 <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'none'; img-src data: *; object-src 'none'"></meta>
 <TITLE>Bookmarks</TITLE>
-<H1>Bookmarks Menu</H1>""",
+<H1>Bookmarks</H1>
+""",
 
-      "doc_section_start":f'''{instructional_text}<DT><H3 FOLDER ADD_DATE="{int(datetime.now().timestamp())}">{tag_text.replace("&&", "&")}</H3>
-    <DL><p>''',
-      "doc_section_end": '</DL><p>',
-      "item_start":'<DT>',
-      "item_end":'\n',
-      "end":'</DL>',
+      "doc_section_start":f'''{instructional_text}
+<DT><H3 FOLDED >{tag_text.replace("&&", "&quot;")}</H3>
+        <DL><p>
+            ''',
+      "doc_section_end": '''
+        </DL><p>''',
+      "item_start":'''
+            <DT>'''
+    ,
+      "item_end":'''''',
+      "end":'''
+</HTML>
+''',
     }
 }
 

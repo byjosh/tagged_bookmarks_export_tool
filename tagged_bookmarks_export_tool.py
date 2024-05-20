@@ -657,7 +657,7 @@ class MainFrame(wx.Frame):
                 self.link_style_key = self.link_style_key = "standard_html"
             
             html_page_source = full_html(self.urls_titles_data, title,self.link_style_key)
-            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=title).SetPage(
+            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title="HTML window: "+title).SetPage(
                 html_page_source, self.urls_titles_data).Show()
 
         elif export_choice == sheets_choice:
@@ -883,7 +883,7 @@ class myHtmlFrame(wx.Frame):
                 pathname = fileDialog.GetPath()
                 try:
                     with open(pathname, 'w') as file:
-                        file.write(self.source.replace(instructional_text, ""))
+                        file.write(self.source.replace(instructional_text+"\n", ""))
                 except IOError:
                     wx.LogError("Cannot save current data in file '%s'." % pathname)
 
@@ -891,7 +891,7 @@ class myHtmlFrame(wx.Frame):
 if __name__ == '__main__':
     # create app, create main frame and show it and start event loop
     app = wx.App()
-    frm = MainFrame(None, size=wx.Size(600, 600), title='Tagged bookmarks export tool')
+    frm = MainFrame(None, size=wx.Size(600, 600), title='Main window: Tagged bookmarks export tool')
     frm.Show()
     # wx.lib.inspection.InspectionTool().Show()  # uncomment for debugging via inspection tool
     app.MainLoop()
