@@ -25,6 +25,7 @@ html_page_source = ""
 # Currently it is making accessible some tags settings that really should be managed by a set of object relations
 export_tags_obj = [""]
 
+
 def html_link(data):
     """
     :param data: tuple with link as 2nd field and title as last
@@ -655,9 +656,9 @@ class MainFrame(wx.Frame):
                 self.link_style_key = "netscape_bookmark_format"
             elif self.order_choice != "HTML links - as browser bookmarks file":
                 self.link_style_key = self.link_style_key = "standard_html"
-            
+            self.html_window_prefix = "HTML window: "
             html_page_source = full_html(self.urls_titles_data, title,self.link_style_key)
-            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title="HTML window: "+title).SetPage(
+            myHtmlFrame(self, size=wx.Size(800, 600), pos=wx.Point(x_pos + width, y_pos), title=self.html_window_prefix+title).SetPage(
                 html_page_source, self.urls_titles_data).Show()
 
         elif export_choice == sheets_choice:
@@ -873,7 +874,7 @@ class myHtmlFrame(wx.Frame):
         if event.GetLinkInfo().GetHref() == "#":
             # This is save file dialog
             with wx.FileDialog(self, "Save as HTML file", wildcard="HTML files (*.html)|*.html",
-                               defaultFile=self.Label.replace("&", "_and_"),
+                               defaultFile=self.Label.replace("&", "_and_").replace(self.GetParent().html_window_prefix,""),
                                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
                 if fileDialog.ShowModal() == wx.ID_CANCEL:
