@@ -53,7 +53,7 @@ class db_util:
             print("That was not a valid file you selected - about to return the previous file")
 
     def db_connect(self):
-        """Returns a connection using filepath specified when instantiating class"""
+        """Returns a connection using filepath specified when instantiating"""
         global pathname
         conn = sqlite3.connect(self.specify_file_path())
         return conn
@@ -280,7 +280,7 @@ class db_util:
         output_list = []
         # log_database.debug(f'This is the ids {ids} END ids  {sys._getframe().f_code.co_name} ENDED')
         for id in ids:
-            db_query = """SELECT id,url,description,title from moz_places WHERE moz_places.id == ? ORDER BY url,title;"""
+            db_query = """SELECT id,url, last_visit_date, description,title from moz_places WHERE moz_places.id == ? ORDER BY url,title;"""
             # log_database.debug(f'Database call in function {sys._getframe().f_code.co_name}')
             # log_database.debug(f'Database query was: {db_query}')
             results = self.db_connect().execute(db_query, (
@@ -295,12 +295,17 @@ class db_util:
                 elif results[0][-1] is None: """
                 title = results[0][-1]
                 url = results[0][1]
-                description = results[0][2]
+                description = results[0][-2]
+                last_visit_field = results[0][-3]
+                if last_visit_field  is not None:
+                    last_visit = str(datetime.fromtimestamp(results[0][-3]/1000000))
+                elif last_visit_field is None:
+                    last_visit = str(datetime.fromtimestamp(int(datetime.now().timestamp())))
                 if title is None:
                     title = ""
 
                 """in places_by_tag we are looking for entries with a parent of the tagID (of which there are multiple entries so UNION does not work - but ones with title have parent of 3 AND using a fancy join selects only where the title is changed - following line does do replacements that are necessary - particularly expanded links"""
-                db_query = """SELECT id,type,parent,dateAdded, title,fk from moz_bookmarks WHERE fk == ? AND type == 1 ORDER BY title;"""
+                db_query = """SELECT id,type,parent,lastModified,dateAdded, title,fk from moz_bookmarks WHERE fk == ? AND type == 1 ORDER BY title;"""
                 # log_database.debug(f'Database call in function {sys._getframe().f_code.co_name}')
                 # log_database.debug(f'Database query was: {db_query}')
                 bookmarks_fk_result = self.db_connect().execute(db_query, (results[0][0],)).fetchall()
@@ -312,7 +317,8 @@ class db_util:
                         title = each_result[-2]
 
                 timestamp = str(datetime.fromtimestamp(bookmarks_fk_result[0][-3]/1000000))
-                constructed_tuple = (results[0][0], url, timestamp, description, title)
+                last_modified = str(datetime.fromtimestamp(bookmarks_fk_result[0][-4]/1000000))
+                constructed_tuple = (results[0][0], url,last_visit, last_modified, timestamp, description, title)
                 output_list.append(constructed_tuple)
                 # log_general.debug(f"success - constructed tuple {constructed_tuple}, output_list {output_list}" )
                 # test_result = bookmarks_fk_result[0][-2] is None
