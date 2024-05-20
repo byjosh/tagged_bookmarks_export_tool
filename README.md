@@ -131,7 +131,7 @@ From the help file
         <ol>
                 <li>Firstly create a project and give it a name (e.g. <em>MyProject</em>) - after which the following steps are under the APIs and Services of your project e.g. <em>MyProject</em> </li>
                 <li> Under "OAuth consent screen" and add yourself (and anyone you want to use the tool) as a test user</li>
-                <li> Under "Enabled APIs &amp; services" search for Google Drive and enable that</li>
+                <li> Under "Enabled APIs &amp; services" search for Google Drive API and Google Sheets API and enable those</li>
                 <li> Under "Credentials": create and download OAuth 2.0 Client ID and save this in the same folder as main Python file as <code>credentials.json</code></li>
         </ol>
         <p>With that configuration done when you tick the checkbox for a tag with "Export to Google Sheets" as selected export mechanism for first time that should lead to web browser based authentication prompt. After successful configuration and authentication you should have two additional files present in the folder <code>credentials.json</code> and <code>token.json</code>(the former downloaded, second created by successful authentication process)</p>
